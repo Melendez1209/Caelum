@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<Page
+    x:Class="Caelum.Pages.ProphetsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+
+    <!--
+        The conversation shell. The message list is empty and the send button is deliberately left
+        live but inert until the AI backing is wired up, so the page can be walked through exactly as
+        it will behave once the service is connected.
+    -->
+    <Grid Padding="24,16" RowSpacing="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TextBlock
+            Grid.Row="0"
+            x:Name="TitleText"
+            Style="{StaticResource TitleTextBlockStyle}" />
+
+        <ListView
+            Grid.Row="1"
+            x:Name="MessagesList"
+            SelectionMode="None"
+            IsItemClickEnabled="False" />
+
+        <Grid Grid.Row="2" ColumnSpacing="8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <Button
+                Grid.Column="0"
+                x:Name="UploadButton"
+                Padding="12,8"
+                MinWidth="0">
+                <FontIcon
+                    FontFamily="Segoe Fluent Icons"
+                    FontSize="16"
+                    Glyph="&#xE728;" />
+            </Button>
+
+            <TextBox
+                Grid.Column="1"
+                x:Name="PromptBox"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Center"
+                AcceptsReturn="False" />
+
+            <Button
+                Grid.Column="2"
+                x:Name="SendButton"
+                Padding="12,8"
+                MinWidth="0"
+                Click="OnSend">
+                <FontIcon
+                    FontFamily="Segoe Fluent Icons"
+                    FontSize="16"
+                    Glyph="&#xE724;" />
+            </Button>
+        </Grid>
+    </Grid>
+</Page>

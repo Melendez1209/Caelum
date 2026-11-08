@@ -166,6 +166,30 @@
     <data name="onboarding_subjects" xml:space="preserve">
     <value>选择您关注的学科</value>
   </data>
+    <data name="grade" xml:space="preserve">
+    <value>年级</value>
+  </data>
+    <data name="onboarding_grade" xml:space="preserve">
+    <value>你的年级是？</value>
+  </data>
+    <data name="grade_junior_first" xml:space="preserve">
+    <value>初一</value>
+  </data>
+    <data name="grade_junior_second" xml:space="preserve">
+    <value>初二</value>
+  </data>
+    <data name="grade_junior_third" xml:space="preserve">
+    <value>初三</value>
+  </data>
+    <data name="grade_senior_first" xml:space="preserve">
+    <value>高一</value>
+  </data>
+    <data name="grade_senior_second" xml:space="preserve">
+    <value>高二</value>
+  </data>
+    <data name="grade_senior_third" xml:space="preserve">
+    <value>高三</value>
+  </data>
     <data name="skip" xml:space="preserve">
     <value>跳过</value>
   </data>
@@ -258,6 +282,18 @@
   </data>
     <data name="search_hint" xml:space="preserve">
     <value>搜索考试</value>
+  </data>
+    <data name="prophets" xml:space="preserve">
+    <value>先知</value>
+  </data>
+    <data name="ask_something" xml:space="preserve">
+    <value>问点什么吧</value>
+  </data>
+    <data name="send" xml:space="preserve">
+    <value>发送</value>
+  </data>
+    <data name="upload_ai" xml:space="preserve">
+    <value>上传照片</value>
   </data>
     <data name="average" xml:space="preserve">
     <value>平均分</value>

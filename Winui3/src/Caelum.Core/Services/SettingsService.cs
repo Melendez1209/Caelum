@@ -50,6 +50,12 @@ public sealed class SettingsService(ISettingsRepository repository)
         return UpdateAsync(settings => settings.Identity = identity, cancellationToken);
     }
 
+    /// <summary>Records the school year the student is seated in.</summary>
+    public Task SetGradeAsync(int grade, CancellationToken cancellationToken = default)
+    {
+        return UpdateAsync(settings => settings.Grade = grade, cancellationToken);
+    }
+
     /// <summary>Stores the free text region the student typed during onboarding.</summary>
     public Task SetRegionAsync(string? region, CancellationToken cancellationToken = default)
     {

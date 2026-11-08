@@ -333,6 +333,7 @@ public sealed class SettingsRepositoryTests : IAsyncLifetime
         Assert.Equal(AppThemeMode.FollowSystem, settings.AppThemeValue);
         Assert.Equal("", settings.SelectedLanguage);
         Assert.Equal(StudentIdentity.None, settings.Identity);
+        Assert.Equal(StudentGrade.None, settings.Grade);
         Assert.Equal(TrendMetric.Marks, settings.TrendMetric);
         Assert.Equal(TrendMetric.Marks, settings.SubjectMetric);
         Assert.Equal(HistoryViewMode.Standard, settings.HistoryViewMode);
@@ -368,6 +369,7 @@ public sealed class SettingsRepositoryTests : IAsyncLifetime
             SelectedLanguage = "zh-Hans",
             IsFirstLogin = false,
             Identity = StudentIdentity.Student,
+            Grade = StudentGrade.SeniorFirst,
             Region = "Shanghai",
             SelectedSubjects = "physics,chemistry",
             TrendMetric = TrendMetric.Rate,
@@ -383,6 +385,7 @@ public sealed class SettingsRepositoryTests : IAsyncLifetime
         Assert.Equal("zh-Hans", stored.SelectedLanguage);
         Assert.False(stored.IsFirstLogin);
         Assert.Equal(StudentIdentity.Student, stored.Identity);
+        Assert.Equal(StudentGrade.SeniorFirst, stored.Grade);
         Assert.Equal("Shanghai", stored.Region);
         Assert.Equal("physics,chemistry", stored.SelectedSubjects);
         Assert.Equal(TrendMetric.Rate, stored.TrendMetric);

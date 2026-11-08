@@ -148,6 +148,7 @@
                 </AppBarButton.Icon>
             </AppBarButton>
             <AppBarButton x:Name="ShareButton" Icon="Share" Label="Share" Click="OnShare" />
+            <AppBarButton x:Name="ProphetsButton" Icon="Message" Label="Prophets" Click="OnOpenProphets" />
             <AppBarButton x:Name="DeleteButton" Icon="Delete" Label="Delete" Click="OnDelete" />
         </CommandBar>
     </Grid>

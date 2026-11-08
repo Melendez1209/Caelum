@@ -41,6 +41,7 @@ public sealed partial class DetailPage
         DeleteButton.Label = _strings.Get("delete");
         ShareButton.Label = _strings.Get("share");
         FavouriteButton.Label = _strings.Get("add_favourite");
+        ProphetsButton.Label = _strings.Get("prophets");
 
         AppServices.Exams.Reloaded += OnExamsReloaded;
     }
@@ -350,6 +351,9 @@ public sealed partial class DetailPage
 
     private void OnShare(object sender, RoutedEventArgs e) =>
         DesktopShare.ShareText(_exam?.Name ?? _strings.Get("exam"), _shareText);
+
+    private void OnOpenProphets(object sender, RoutedEventArgs e) =>
+        this.Frame.Navigate(typeof(ProphetsPage));
 
     /// <summary>One subject's figures on the detail page.</summary>
     /// <param name="SubjectKey">Stable subject key, used to pick a consistent colour.</param>

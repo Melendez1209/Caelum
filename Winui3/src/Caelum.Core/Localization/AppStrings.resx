@@ -178,6 +178,30 @@
     <data name="onboarding_subjects" xml:space="preserve">
     <value>Choose subjects you care about</value>
   </data>
+    <data name="grade" xml:space="preserve">
+    <value>Grade</value>
+  </data>
+    <data name="onboarding_grade" xml:space="preserve">
+    <value>What grade are you in?</value>
+  </data>
+    <data name="grade_junior_first" xml:space="preserve">
+    <value>Grade 7</value>
+  </data>
+    <data name="grade_junior_second" xml:space="preserve">
+    <value>Grade 8</value>
+  </data>
+    <data name="grade_junior_third" xml:space="preserve">
+    <value>Grade 9</value>
+  </data>
+    <data name="grade_senior_first" xml:space="preserve">
+    <value>Grade 10</value>
+  </data>
+    <data name="grade_senior_second" xml:space="preserve">
+    <value>Grade 11</value>
+  </data>
+    <data name="grade_senior_third" xml:space="preserve">
+    <value>Grade 12</value>
+  </data>
     <data name="physics" xml:space="preserve">
     <value>Physics</value>
   </data>
@@ -261,6 +285,18 @@
   </data>
     <data name="search_hint" xml:space="preserve">
     <value>Search exams</value>
+  </data>
+    <data name="prophets" xml:space="preserve">
+    <value>Prophets</value>
+  </data>
+    <data name="ask_something" xml:space="preserve">
+    <value>Ask something</value>
+  </data>
+    <data name="send" xml:space="preserve">
+    <value>Send</value>
+  </data>
+    <data name="upload_ai" xml:space="preserve">
+    <value>Ask with an image</value>
   </data>
     <data name="average" xml:space="preserve">
     <value>Average</value>

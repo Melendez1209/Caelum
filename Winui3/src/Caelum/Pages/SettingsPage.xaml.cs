@@ -39,6 +39,7 @@ public sealed partial class SettingsPage
         AppearanceCaption.Text = _strings.Get("appearance_section");
 
         IdentityCaption.Text = _strings.Get("identity");
+        GradeCaption.Text = _strings.Get("grade");
         RegionCaption.Text = _strings.Get("region");
         RegionBox.PlaceholderText = _strings.Get("district");
         SubjectsCaption.Text = _strings.Get("subjects");
@@ -68,6 +69,7 @@ public sealed partial class SettingsPage
         };
 
         BuildSubjectBoxes();
+        BuildGradeOptions();
         BuildThemeOptions();
         BuildLanguageOptions();
 
@@ -175,6 +177,12 @@ public sealed partial class SettingsPage
         }
     }
 
+    private void BuildGradeOptions()
+    {
+        GradeOptions.ItemsSource = StudentGrade.All
+            .Select(grade => GradeLabels.NameOf(_strings, grade)).ToList();
+    }
+
     private void ApplyStoredSettings()
     {
         _suppressEvents = true;
@@ -186,6 +194,17 @@ public sealed partial class SettingsPage
                 StudentIdentity.Student => 0,
                 StudentIdentity.Teacher => 1,
                 StudentIdentity.Parent => 2,
+                _ => -1
+            };
+
+            GradeOptions.SelectedIndex = AppServices.Settings.Current.Grade switch
+            {
+                StudentGrade.JuniorFirst => 0,
+                StudentGrade.JuniorSecond => 1,
+                StudentGrade.JuniorThird => 2,
+                StudentGrade.SeniorFirst => 3,
+                StudentGrade.SeniorSecond => 4,
+                StudentGrade.SeniorThird => 5,
                 _ => -1
             };
 
@@ -238,6 +257,24 @@ public sealed partial class SettingsPage
         };
 
         await AppServices.Settings.SetIdentityAsync(identity);
+    }
+
+    private async void OnGradeChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_suppressEvents || GradeOptions.SelectedIndex < 0) return;
+
+        var grade = GradeOptions.SelectedIndex switch
+        {
+            0 => StudentGrade.JuniorFirst,
+            1 => StudentGrade.JuniorSecond,
+            2 => StudentGrade.JuniorThird,
+            3 => StudentGrade.SeniorFirst,
+            4 => StudentGrade.SeniorSecond,
+            5 => StudentGrade.SeniorThird,
+            _ => StudentGrade.None
+        };
+
+        await AppServices.Settings.SetGradeAsync(grade);
     }
 
     private async void OnRegionLostFocus(object sender, RoutedEventArgs e)

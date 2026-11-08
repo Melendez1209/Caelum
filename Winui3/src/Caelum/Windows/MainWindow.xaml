@@ -100,6 +100,7 @@
             <NavigationView.MenuItems>
                 <NavigationViewItem x:Name="HomeItem" Content="Home" Tag="Home" Icon="Home" />
                 <NavigationViewItem x:Name="HistoryItem" Content="History" Tag="History" Icon="AllApps" />
+                <NavigationViewItem x:Name="ProphetsItem" Content="Prophets" Tag="Prophets" Icon="Message" />
             </NavigationView.MenuItems>
 
             <!--

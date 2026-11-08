@@ -25,6 +25,9 @@ public sealed class Settings
     /// <summary>One of the <see cref="StudentIdentity" /> constants.</summary>
     public int Identity { get; set; } = StudentIdentity.None;
 
+    /// <summary>One of the <see cref="StudentGrade" /> constants.</summary>
+    public int Grade { get; set; } = StudentGrade.None;
+
     /// <summary>Free text region the student typed during onboarding.</summary>
     public string Region { get; set; } = string.Empty;
 

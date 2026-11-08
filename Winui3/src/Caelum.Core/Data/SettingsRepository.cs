@@ -75,6 +75,7 @@ public sealed class SettingsRepository(CaelumDbContext context) : ISettingsRepos
             stored.SelectedLanguage = settings.SelectedLanguage;
             stored.IsFirstLogin = settings.IsFirstLogin;
             stored.Identity = settings.Identity;
+            stored.Grade = settings.Grade;
             stored.Region = settings.Region;
             stored.SelectedSubjects = settings.SelectedSubjects;
             stored.TrendMetric = settings.TrendMetric;

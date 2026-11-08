@@ -139,6 +139,13 @@
                 </StackPanel>
             </controls:SettingsCard>
 
+            <controls:SettingsCard>
+                <controls:SettingsCard.Header>
+                    <TextBlock x:Name="GradeCaption" Style="{StaticResource SettingsCardHeaderTextBlockStyle}" />
+                </controls:SettingsCard.Header>
+                <ComboBox x:Name="GradeOptions" MinWidth="200" SelectionChanged="OnGradeChanged" />
+            </controls:SettingsCard>
+
             <controls:SettingsCard
                 ContentAlignment="Vertical"
                 HorizontalContentAlignment="Stretch">
