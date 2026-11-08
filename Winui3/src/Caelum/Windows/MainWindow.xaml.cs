@@ -2,6 +2,7 @@ using Caelum.Core.Data;
 using Caelum.Core.Localization;
 using Caelum.Pages;
 using Caelum.Services;
+using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
@@ -41,6 +42,13 @@ public sealed partial class MainWindow
         // an error, and doing it late would flash the system title bar before replacing it
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(AppTitleBar);
+
+        // The bar carries interactive content (the search box), for which the Fluent guidance is a
+        // taller title bar. The system caption buttons are rendered at the standard height otherwise,
+        // so they would fill only the top of the bar and their touch target would not match it.
+        // PreferredHeightOption requires ExtendsContentIntoTitleBar to be set first
+        if (AppWindowTitleBar.IsCustomizationSupported())
+            AppWindow.TitleBar.PreferredHeightOption = TitleBarHeightOption.Tall;
 
         DesktopShare.Initialise(this);
 

@@ -268,16 +268,15 @@ public sealed partial class DetailPage
         int rank,
         IReadOnlyList<SubjectFigure> subjects)
     {
-        var lines = new List<string>
-        {
+        List<string> lines =
+        [
             $"{_strings.Get("exam")}: {_exam?.Name}",
             $"{_strings.Get("exam_dates")}: {ExamDates.FormatDateRange(_exam!.StartDate, _exam.EndDate)}",
             $"{_strings.Get("total_score")}: {totalMark:0.#}/{totalFullMark:0.#}",
             $"{_strings.Get("percentage")}: {totalPercentage:0.#}%",
-            $"{_strings.Get("rank")}: {rank}"
-        };
-
-        lines.AddRange(subjects.Select(s => $"{s.Name}: {s.Mark:0.#}/{s.FullMark:0.#}"));
+            $"{_strings.Get("rank")}: {rank}",
+            .. subjects.Select(s => $"{s.Name}: {s.Mark:0.#}/{s.FullMark:0.#}")
+        ];
 
         _shareText = string.Join(Environment.NewLine, lines);
     }
