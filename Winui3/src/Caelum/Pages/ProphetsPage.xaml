@@ -10,10 +10,57 @@
     Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
 
     <!--
-        The conversation shell. The message list is empty and the send button is deliberately left
-        live but inert until the AI backing is wired up, so the page can be walked through exactly as
-        it will behave once the service is connected.
+        Two bubble templates, one per speaker. The selector in the code behind picks between them
+        from the message, so the student's own messages sit on the right in the accent colour and
+        the assistant's on the left on the card surface.
+
+        The item style drops the list's own padding and minimum height: a chat row is exactly as
+        tall as its bubble, and the bubble carries its own inset.
     -->
+    <Page.Resources>
+        <Style
+            x:Key="ChatItemStyle"
+            TargetType="ListViewItem"
+            BasedOn="{StaticResource DefaultListViewItemStyle}">
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="0,4" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="VerticalContentAlignment" Value="Top" />
+        </Style>
+
+        <DataTemplate x:Key="UserMessageTemplate">
+            <Grid>
+                <Border
+                    HorizontalAlignment="Right"
+                    MaxWidth="520"
+                    Padding="12,8"
+                    CornerRadius="12"
+                    Background="{ThemeResource AccentFillColorSecondaryBrush}">
+                    <TextBlock
+                        Text="{Binding Text}"
+                        TextWrapping="Wrap"
+                        Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}" />
+                </Border>
+            </Grid>
+        </DataTemplate>
+
+        <DataTemplate x:Key="AssistantMessageTemplate">
+            <Grid>
+                <Border
+                    HorizontalAlignment="Left"
+                    MaxWidth="520"
+                    Padding="12,8"
+                    CornerRadius="12"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1">
+                    <TextBlock Text="{Binding Text}" TextWrapping="Wrap" />
+                </Border>
+            </Grid>
+        </DataTemplate>
+    </Page.Resources>
+
     <Grid Padding="24,16" RowSpacing="12">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -29,8 +76,10 @@
         <ListView
             Grid.Row="1"
             x:Name="MessagesList"
+            Background="Transparent"
             SelectionMode="None"
-            IsItemClickEnabled="False" />
+            IsItemClickEnabled="False"
+            ItemContainerStyle="{StaticResource ChatItemStyle}" />
 
         <Grid Grid.Row="2" ColumnSpacing="8">
             <Grid.ColumnDefinitions>
@@ -50,18 +99,27 @@
                     Glyph="&#xE728;" />
             </Button>
 
+            <!--
+                A multi line box: it grows with the text up to the cap and then scrolls internally.
+                Enter sends and Shift+Enter drops a new line, handled in OnPromptKeyDown.
+            -->
             <TextBox
                 Grid.Column="1"
                 x:Name="PromptBox"
                 HorizontalAlignment="Stretch"
                 VerticalAlignment="Center"
-                AcceptsReturn="False" />
+                AcceptsReturn="True"
+                TextWrapping="Wrap"
+                MaxHeight="120"
+                KeyDown="OnPromptKeyDown"
+                TextChanged="OnPromptTextChanged" />
 
             <Button
                 Grid.Column="2"
                 x:Name="SendButton"
                 Padding="12,8"
                 MinWidth="0"
+                IsEnabled="False"
                 Click="OnSend">
                 <FontIcon
                     FontFamily="Segoe Fluent Icons"

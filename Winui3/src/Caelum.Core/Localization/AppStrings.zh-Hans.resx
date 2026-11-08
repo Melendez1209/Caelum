@@ -295,6 +295,9 @@
     <data name="upload_ai" xml:space="preserve">
     <value>上传照片</value>
   </data>
+    <data name="prophets_placeholder_reply" xml:space="preserve">
+    <value>连接失败</value>
+  </data>
     <data name="average" xml:space="preserve">
     <value>平均分</value>
   </data>
