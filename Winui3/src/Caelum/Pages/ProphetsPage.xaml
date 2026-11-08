@@ -100,18 +100,17 @@
             </Button>
 
             <!--
-                A multi line box: it grows with the text up to the cap and then scrolls internally.
-                Enter sends and Shift+Enter drops a new line, handled in OnPromptKeyDown.
+                A multi line rich text box. The preview key handler, attached with handled events
+                so the control cannot swallow the key, makes Enter send and Shift+Enter drop a new
+                line; see OnPromptPreviewKeyDown.
             -->
-            <TextBox
+            <RichEditBox
                 Grid.Column="1"
                 x:Name="PromptBox"
                 HorizontalAlignment="Stretch"
                 VerticalAlignment="Center"
                 AcceptsReturn="True"
-                TextWrapping="Wrap"
-                MaxHeight="120"
-                KeyDown="OnPromptKeyDown"
+                MaxHeight="150"
                 TextChanged="OnPromptTextChanged" />
 
             <Button

@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using Caelum.Core.Localization;
 using Microsoft.UI.Input;
+using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -45,6 +46,14 @@ public sealed partial class ProphetsPage
 
         MessagesList.ItemsSource = _messages;
 
+        // Attached with handled events so the control cannot swallow Enter before the handler runs:
+        // the preview handler sends and stops the control inserting a paragraph break. Shift+Enter
+        // is left alone, so the control drops a new line.
+        PromptBox.AddHandler(
+            UIElement.PreviewKeyDownEvent,
+            new KeyEventHandler(OnPromptPreviewKeyDown),
+            handledEventsToo: true);
+
         UpdateSendState();
     }
 
@@ -58,22 +67,20 @@ public sealed partial class ProphetsPage
         base.OnNavigatedFrom(e);
     }
 
-    /// <summary>
-    ///     Enter sends the message; Shift+Enter drops a new line, which is what the multi line box is
-    ///     for.
-    /// </summary>
-    private void OnPromptKeyDown(object sender, KeyRoutedEventArgs e)
+    private void OnPromptPreviewKeyDown(object sender, KeyRoutedEventArgs e)
     {
         if (e.Key != VirtualKey.Enter) return;
 
-        // A shift held down belongs to the text, so the newline is left to the box
+        // Shift+Enter drops a new line; Enter on its own sends
         if (IsShiftDown()) return;
 
+        // Stop the control from inserting a paragraph break: the message is sent instead
         e.Handled = true;
+
         SendMessage();
     }
 
-    private void OnPromptTextChanged(object sender, TextChangedEventArgs e) => UpdateSendState();
+    private void OnPromptTextChanged(object sender, RoutedEventArgs e) => UpdateSendState();
 
     private void OnSend(object sender, RoutedEventArgs e) => SendMessage();
 
@@ -83,13 +90,15 @@ public sealed partial class ProphetsPage
     /// </summary>
     private async void SendMessage()
     {
-        var text = PromptBox.Text?.Trim() ?? string.Empty;
+        PromptBox.Document.GetText(TextGetOptions.None, out var text);
 
-        if (string.IsNullOrEmpty(text)) return;
+        var trimmed = text.Trim();
 
-        AddMessage(new ChatMessage(text, IsUser: true));
+        if (string.IsNullOrEmpty(trimmed)) return;
 
-        PromptBox.Text = string.Empty;
+        AddMessage(new ChatMessage(NormalizeLineEndings(trimmed), IsUser: true));
+
+        PromptBox.Document.SetText(TextSetOptions.None, string.Empty);
 
         var reply = _strings.Get("prophets_placeholder_reply");
 
@@ -108,6 +117,10 @@ public sealed partial class ProphetsPage
         AddMessage(new ChatMessage(reply, IsUser: false));
     }
 
+    /// <summary>Puts line endings on a common footing so the bubbles render them consistently.</summary>
+    private static string NormalizeLineEndings(string text) =>
+        text.Replace("\r\n", "\n").Replace("\r", "\n");
+
     private void AddMessage(ChatMessage message)
     {
         _messages.Add(message);
@@ -116,8 +129,12 @@ public sealed partial class ProphetsPage
         DispatcherQueue.TryEnqueue(() => MessagesList.ScrollIntoView(message));
     }
 
-    private void UpdateSendState() =>
-        SendButton.IsEnabled = !string.IsNullOrWhiteSpace(PromptBox.Text);
+    private void UpdateSendState()
+    {
+        PromptBox.Document.GetText(TextGetOptions.None, out var text);
+
+        SendButton.IsEnabled = !string.IsNullOrWhiteSpace(text);
+    }
 
     /// <summary>True while Shift is held, which turns Enter into a newline rather than a sending.</summary>
     private static bool IsShiftDown()
