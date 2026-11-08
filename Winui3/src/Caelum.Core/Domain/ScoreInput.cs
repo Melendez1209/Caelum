@@ -23,6 +23,9 @@ public enum ScoreValidation
     /// <summary>Nothing has been typed into any ticked row.</summary>
     NoMarkEntered,
 
+    /// <summary>A ticked row has no mark, so saving would silently drop a selected subject.</summary>
+    MissingMark,
+
     /// <summary>A row carrying a mark that is unparsable or greater than its full mark.</summary>
     MarkExceedsFull
 }

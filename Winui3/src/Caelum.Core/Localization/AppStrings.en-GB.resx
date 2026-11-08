@@ -64,6 +64,12 @@
     <data name="exam_dates" xml:space="preserve">
     <value>Exam Dates</value>
   </data>
+    <data name="start_date" xml:space="preserve">
+    <value>Start date</value>
+  </data>
+    <data name="end_date" xml:space="preserve">
+    <value>End date</value>
+  </data>
     <data name="discard" xml:space="preserve">
     <value>Discard</value>
   </data>
@@ -228,6 +234,9 @@
   </data>
     <data name="mark_exceeds_full" xml:space="preserve">
     <value>A mark cannot exceed its full mark.</value>
+  </data>
+    <data name="missing_mark" xml:space="preserve">
+    <value>Fill in a mark for every selected subject.</value>
   </data>
     <data name="delete_exam_message" xml:space="preserve">
     <value>The exam and all of its scores will be permanently deleted.</value>

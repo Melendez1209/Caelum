@@ -203,12 +203,24 @@ public class ExamScoringTests
     }
 
     [Fact]
-    public void OneUsableMarkIsEnoughToSave()
+    public void ATickedRowWithoutAMarkBlocksTheSave()
     {
         var inputs = new[]
         {
             new ScoreInput("chinese", true, "140"),
-            new ScoreInput("maths")
+            new ScoreInput("maths", true, "")
+        };
+
+        Assert.Equal(ScoreValidation.MissingMark, ExamScoring.ValidateScoreInputs(inputs));
+    }
+
+    [Fact]
+    public void EveryTickedRowFilledIsEnoughToSave()
+    {
+        var inputs = new[]
+        {
+            new ScoreInput("chinese", true, "140"),
+            new ScoreInput("maths", true, "120")
         };
 
         Assert.Equal(ScoreValidation.Valid, ExamScoring.ValidateScoreInputs(inputs));

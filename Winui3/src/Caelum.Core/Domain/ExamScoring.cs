@@ -246,11 +246,12 @@ public static class ExamScoring
 
         if (ticked.All(input => string.IsNullOrWhiteSpace(input.Mark))) return ScoreValidation.NoMarkEntered;
 
-        // A ticked row the student left empty is skipped on save, so only rows carrying a mark count
+        // A ticked row the student left empty is skipped on save, so a selected subject would
+        // quietly disappear from the exam; every ticked row has to carry a mark
+        if (ticked.Any(input => string.IsNullOrWhiteSpace(input.Mark))) return ScoreValidation.MissingMark;
+
         var hasInvalidRow = ticked.Any(input =>
         {
-            if (string.IsNullOrWhiteSpace(input.Mark)) return false;
-
             var mark = ParseScoreOrNull(input.Mark);
             var fullMark = ParseScoreOrNull(input.FullMark);
 

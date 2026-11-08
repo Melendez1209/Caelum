@@ -47,8 +47,9 @@
         </Grid>
 
         <!--
-            The exam dates sit side by side. StartPicker carries MaxDate = today, set in the
-            code-behind, so a date after today cannot be picked at all.
+            The exam dates sit side by side, each labelled so the pair reads as a range. StartPicker
+            carries MaxDate = today and EndPicker carries MinDate = the start date, both set in the
+            code-behind, so an impossible pair cannot be picked at all.
         -->
         <StackPanel Grid.Row="1" Spacing="4">
             <TextBlock
@@ -62,17 +63,27 @@
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
 
-                <CalendarDatePicker
-                    Grid.Column="0"
-                    x:Name="StartPicker"
-                    HorizontalAlignment="Stretch"
-                    DateChanged="OnDateChanged" />
+                <StackPanel Grid.Column="0" Spacing="4">
+                    <TextBlock
+                        x:Name="StartCaption"
+                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Text="Start date" />
+                    <CalendarDatePicker
+                        x:Name="StartPicker"
+                        HorizontalAlignment="Stretch"
+                        DateChanged="OnDateChanged" />
+                </StackPanel>
 
-                <CalendarDatePicker
-                    Grid.Column="1"
-                    x:Name="EndPicker"
-                    HorizontalAlignment="Stretch"
-                    DateChanged="OnDateChanged" />
+                <StackPanel Grid.Column="1" Spacing="4">
+                    <TextBlock
+                        x:Name="EndCaption"
+                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Text="End date" />
+                    <CalendarDatePicker
+                        x:Name="EndPicker"
+                        HorizontalAlignment="Stretch"
+                        DateChanged="OnDateChanged" />
+                </StackPanel>
             </Grid>
 
             <TextBlock

@@ -64,6 +64,12 @@
     <data name="exam_dates" xml:space="preserve">
     <value>考试期</value>
   </data>
+    <data name="start_date" xml:space="preserve">
+    <value>开始日期</value>
+  </data>
+    <data name="end_date" xml:space="preserve">
+    <value>结束日期</value>
+  </data>
     <data name="discard" xml:space="preserve">
     <value>放弃</value>
   </data>
@@ -228,6 +234,9 @@
   </data>
     <data name="mark_exceeds_full" xml:space="preserve">
     <value>分数不可超过满分。</value>
+  </data>
+    <data name="missing_mark" xml:space="preserve">
+    <value>请为所有选中的科目填写成绩。</value>
   </data>
     <data name="delete_exam_message" xml:space="preserve">
     <value>该场考试及其所有分数将被永久删除。</value>
