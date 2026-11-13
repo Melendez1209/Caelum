@@ -14,8 +14,10 @@ messages, Markdown files and similar content in British English.
   `origin/dev_android`).
 - Pushes to `main` containing changes under `Web/` trigger the GitHub Pages deploy workflow
   (`.github/workflows/static.yml`). Treat pushes to `main` with extra care.
-- Prior to the official release of the [GitHub repository](https://github.com/Melendez1209/Caelum), the database version
-  will be standardised as v1; no migration is required.
+- The Windows app has already shipped, so its SQLite schema is versioned. `Caelum.Core/Data/DatabaseMigrator.cs`
+  upgrades an existing database in place (tracked by `PRAGMA user_version`) and fresh installs are created at the
+  latest schema by `EnsureCreated`. Add a migration step there when the model changes; never delete a released
+  database. The Android database is still pre-release and needs no migration.
 
 ## Repository layout (monorepo, single git repo at root)
 
@@ -58,8 +60,13 @@ messages, Markdown files and similar content in British English.
 - Run the tests with `dotnet test Winui3\tests\Caelum.Core.Tests\Caelum.Core.Tests.csproj`. The 35 cases in
   `ExamScoringTests` are a deliberate port of the Android `ExamCoreKtTest` (the desktop side adds a few dashboard
   average cases), so keep them in step when either side changes.
-- Package versions: `Microsoft.WindowsAppSDK` 2.5.1, `LiveChartsCore.SkiaSharpView.WinUI` 2.0.5, `CommunityToolkit.Mvvm`
-  8.4.2, `Microsoft.Identity.Client` 4.90.1, EF Core 9.0.20 (EF Core 10 needs .NET 10, so do not bump it).
+- The Windows SQLite schema is versioned by `Caelum.Core/Data/DatabaseMigrator.cs`, which upgrades an existing
+  database in place (`PRAGMA user_version`). Add a migration step there when the model changes; never delete a
+  released database.
+- Package versions: `Microsoft.WindowsAppSDK` 2.6.5, `Microsoft.Windows.SDK.BuildTools` 10.0.28000.2957,
+  `LiveChartsCore.SkiaSharpView.WinUI` 2.1.0-dev-798, `CommunityToolkit.Common` 8.4.2,
+  `CommunityToolkit.WinUI.Controls.SettingsControls` 8.2.251219, `Microsoft.Identity.Client` 4.92.0,
+  `System.Security.Cryptography.ProtectedData` 9.0.0, EF Core 9.0.20 (EF Core 10 needs .NET 10, so do not bump it).
 - The Windows build uses the **native WinUI theme only**. The Android HCT/CAM16 palette engine was deliberately not
   ported, so there is no seed colour or palette style setting here. Do not reintroduce one.
 - Cloud services were dropped except Microsoft account sign in: no Firebase, AdMob, Gemini or ML Kit. The desktop app is

@@ -304,8 +304,74 @@
     <data name="upload_ai" xml:space="preserve">
     <value>Ask with an image</value>
   </data>
-    <data name="prophets_placeholder_reply" xml:space="preserve">
-    <value>Connection Failed</value>
+    <data name="llm_provider" xml:space="preserve">
+    <value>Model provider</value>
+  </data>
+    <data name="llm_provider_none" xml:space="preserve">
+    <value>Not configured</value>
+  </data>
+    <data name="llm_provider_longcat" xml:space="preserve">
+    <value>LongCat (Meituan)</value>
+  </data>
+    <data name="llm_provider_custom" xml:space="preserve">
+    <value>Custom (OpenAI-compatible)</value>
+  </data>
+    <data name="llm_base_url" xml:space="preserve">
+    <value>API base URL</value>
+  </data>
+    <data name="llm_base_url_hint" xml:space="preserve">
+    <value>https://api.longcat.chat/openai</value>
+  </data>
+    <data name="llm_model" xml:space="preserve">
+    <value>Model name</value>
+  </data>
+    <data name="llm_model_hint" xml:space="preserve">
+    <value>LongCat-2.5</value>
+  </data>
+    <data name="llm_api_key" xml:space="preserve">
+    <value>API key</value>
+  </data>
+    <data name="llm_api_key_hint" xml:space="preserve">
+    <value>The key is stored encrypted on this device with your Windows credentials.</value>
+  </data>
+    <data name="llm_api_key_hint_short" xml:space="preserve">
+    <value>Leave blank to keep the current key</value>
+  </data>
+    <data name="llm_api_key_save_failed" xml:space="preserve">
+    <value>Couldn't save the API key. Please try again.</value>
+  </data>
+    <data name="llm_test_connection" xml:space="preserve">
+    <value>Test connection</value>
+  </data>
+    <data name="llm_test_success" xml:space="preserve">
+    <value>Connection successful.</value>
+  </data>
+    <data name="llm_error_generic" xml:space="preserve">
+    <value>The model could not be reached. Check your settings and try again.</value>
+  </data>
+    <data name="llm_error_unauthorized" xml:space="preserve">
+    <value>The API key was rejected.</value>
+  </data>
+    <data name="llm_error_not_found" xml:space="preserve">
+    <value>The model or endpoint was not found. Check the base URL and model name.</value>
+  </data>
+    <data name="llm_error_rate_limited" xml:space="preserve">
+    <value>The model is busy. Please try again later.</value>
+  </data>
+    <data name="llm_error_network" xml:space="preserve">
+    <value>Could not reach the model. Check your network connection.</value>
+  </data>
+    <data name="llm_error_cancelled" xml:space="preserve">
+    <value>The request was cancelled.</value>
+  </data>
+    <data name="llm_not_configured" xml:space="preserve">
+    <value>Set up an API key in Settings to start chatting.</value>
+  </data>
+    <data name="llm_open_settings" xml:space="preserve">
+    <value>Open settings</value>
+  </data>
+    <data name="llm_system_prompt" xml:space="preserve">
+    <value>You are Caelum's study assistant. Help the student understand their exam performance, analyse strengths and weaknesses, and suggest practical ways to improve. Be concise, encouraging and honest, and answer in the language the student uses.</value>
   </data>
     <data name="average" xml:space="preserve">
     <value>Average</value>

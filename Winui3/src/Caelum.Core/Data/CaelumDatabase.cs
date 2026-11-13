@@ -31,9 +31,8 @@ public static class CaelumDatabase
     ///     the returned context and should dispose it.
     /// </summary>
     /// <remarks>
-    ///     No migration step exists yet: the schema is still at v1 and the app has not shipped, so a
-    ///     fresh file is all a new installation needs. Existing databases are the developer's own,
-    ///     and are deleted by hand rather than upgraded.
+    ///     New installations are created at the latest schema by <see cref="DatabaseMigrator" />.
+    ///     Existing databases are upgraded in place, because the Windows app has already shipped.
     /// </remarks>
     public static CaelumDbContext CreateContext()
     {

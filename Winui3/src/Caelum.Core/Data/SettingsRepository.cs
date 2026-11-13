@@ -81,6 +81,9 @@ public sealed class SettingsRepository(CaelumDbContext context) : ISettingsRepos
             stored.TrendMetric = settings.TrendMetric;
             stored.SubjectMetric = settings.SubjectMetric;
             stored.HistoryViewMode = settings.HistoryViewMode;
+            stored.LlmProviderValue = settings.LlmProviderValue;
+            stored.LlmBaseUrl = settings.LlmBaseUrl;
+            stored.LlmModel = settings.LlmModel;
         }
 
         await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);

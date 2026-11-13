@@ -59,6 +59,8 @@ public sealed class CaelumDbContext(DbContextOptions<CaelumDbContext> options) :
             entity.Property(settings => settings.SelectedLanguage).IsRequired().HasMaxLength(32);
             entity.Property(settings => settings.Region).IsRequired().HasMaxLength(128);
             entity.Property(settings => settings.SelectedSubjects).IsRequired().HasMaxLength(512);
+            entity.Property(settings => settings.LlmBaseUrl).IsRequired().HasMaxLength(512);
+            entity.Property(settings => settings.LlmModel).IsRequired().HasMaxLength(128);
         });
     }
 }

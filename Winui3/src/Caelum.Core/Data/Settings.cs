@@ -51,4 +51,13 @@ public sealed class Settings
     /// adds the date and the score detail, and compact shows only a name and a mark.
     /// </summary>
     public HistoryViewMode HistoryViewMode { get; set; } = HistoryViewMode.Standard;
+
+    /// <summary>One of the <see cref="LlmProviderOption" /> constants.</summary>
+    public int LlmProviderValue { get; set; } = (int)LlmProviderOption.None;
+
+    /// <summary>OpenAI compatible base URL the assistant talks to.</summary>
+    public string LlmBaseUrl { get; set; } = string.Empty;
+
+    /// <summary>Model name sent with every assistant request.</summary>
+    public string LlmModel { get; set; } = string.Empty;
 }

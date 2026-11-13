@@ -161,6 +161,97 @@
                 </ItemsControl>
             </controls:SettingsCard>
 
+            <!-- Prophets -->
+            <TextBlock
+                x:Name="ProphetsCaption"
+                Style="{StaticResource SettingsSectionHeaderTextBlockStyle}" />
+
+            <controls:SettingsCard>
+                <controls:SettingsCard.Header>
+                    <TextBlock x:Name="LlmProviderCaption" Style="{StaticResource SettingsCardHeaderTextBlockStyle}" />
+                </controls:SettingsCard.Header>
+                <ComboBox x:Name="LlmProviderOptions" MinWidth="240" SelectionChanged="OnLlmProviderChanged" />
+            </controls:SettingsCard>
+
+            <controls:SettingsCard
+                ContentAlignment="Vertical"
+                HorizontalContentAlignment="Stretch">
+                <controls:SettingsCard.Header>
+                    <TextBlock x:Name="LlmBaseUrlCaption" Style="{StaticResource SettingsCardHeaderTextBlockStyle}" />
+                </controls:SettingsCard.Header>
+
+                <TextBox
+                    x:Name="LlmBaseUrlBox"
+                    HorizontalAlignment="Stretch"
+                    AcceptsReturn="False"
+                    LostFocus="OnLlmConfigLostFocus" />
+            </controls:SettingsCard>
+
+            <controls:SettingsCard
+                ContentAlignment="Vertical"
+                HorizontalContentAlignment="Stretch">
+                <controls:SettingsCard.Header>
+                    <TextBlock x:Name="LlmModelCaption" Style="{StaticResource SettingsCardHeaderTextBlockStyle}" />
+                </controls:SettingsCard.Header>
+
+                <TextBox
+                    x:Name="LlmModelBox"
+                    HorizontalAlignment="Stretch"
+                    AcceptsReturn="False"
+                    LostFocus="OnLlmConfigLostFocus" />
+            </controls:SettingsCard>
+
+            <controls:SettingsCard
+                ContentAlignment="Vertical"
+                HorizontalContentAlignment="Stretch">
+                <controls:SettingsCard.Header>
+                    <TextBlock x:Name="LlmApiKeyCaption" Style="{StaticResource SettingsCardHeaderTextBlockStyle}" />
+                </controls:SettingsCard.Header>
+
+                <StackPanel Spacing="8" HorizontalAlignment="Stretch">
+                    <PasswordBox
+                        x:Name="LlmApiKeyBox"
+                        HorizontalAlignment="Stretch"
+                        PasswordRevealMode="Peek"
+                        PasswordChanged="OnLlmApiKeyChanged"
+                        LostFocus="OnLlmApiKeyLostFocus" />
+
+                    <TextBlock
+                        x:Name="LlmApiKeyHint"
+                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        TextWrapping="Wrap" />
+
+                    <Grid ColumnSpacing="8" HorizontalAlignment="Stretch">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <Button
+                            x:Name="LlmTestButton"
+                            Grid.Column="0"
+                            Click="OnLlmTestConnection" />
+
+                        <ProgressRing
+                            x:Name="LlmTestProgress"
+                            Grid.Column="1"
+                            Width="20"
+                            Height="20"
+                            VerticalAlignment="Center"
+                            IsActive="False"
+                            Visibility="Collapsed" />
+                    </Grid>
+
+                    <TextBlock
+                        x:Name="LlmTestMessage"
+                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        TextWrapping="Wrap"
+                        Visibility="Collapsed" />
+                </StackPanel>
+            </controls:SettingsCard>
+
             <!-- Appearance -->
             <TextBlock
                 x:Name="AppearanceCaption"

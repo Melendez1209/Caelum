@@ -304,8 +304,74 @@
     <data name="upload_ai" xml:space="preserve">
     <value>上传照片</value>
   </data>
-    <data name="prophets_placeholder_reply" xml:space="preserve">
-    <value>连接失败</value>
+    <data name="llm_provider" xml:space="preserve">
+    <value>模型提供商</value>
+  </data>
+    <data name="llm_provider_none" xml:space="preserve">
+    <value>未配置</value>
+  </data>
+    <data name="llm_provider_longcat" xml:space="preserve">
+    <value>LongCat（美团）</value>
+  </data>
+    <data name="llm_provider_custom" xml:space="preserve">
+    <value>自定义（OpenAI 兼容）</value>
+  </data>
+    <data name="llm_base_url" xml:space="preserve">
+    <value>API 地址</value>
+  </data>
+    <data name="llm_base_url_hint" xml:space="preserve">
+    <value>https://api.longcat.chat/openai</value>
+  </data>
+    <data name="llm_model" xml:space="preserve">
+    <value>模型名称</value>
+  </data>
+    <data name="llm_model_hint" xml:space="preserve">
+    <value>LongCat-2.5</value>
+  </data>
+    <data name="llm_api_key" xml:space="preserve">
+    <value>API 密钥</value>
+  </data>
+    <data name="llm_api_key_hint" xml:space="preserve">
+    <value>密钥使用你的 Windows 凭据在本机加密保存。</value>
+  </data>
+    <data name="llm_api_key_hint_short" xml:space="preserve">
+    <value>留空以保留当前密钥</value>
+  </data>
+    <data name="llm_api_key_save_failed" xml:space="preserve">
+    <value>无法保存 API 密钥，请重试。</value>
+  </data>
+    <data name="llm_test_connection" xml:space="preserve">
+    <value>测试连接</value>
+  </data>
+    <data name="llm_test_success" xml:space="preserve">
+    <value>连接成功。</value>
+  </data>
+    <data name="llm_error_generic" xml:space="preserve">
+    <value>无法连接模型，请检查设置后重试。</value>
+  </data>
+    <data name="llm_error_unauthorized" xml:space="preserve">
+    <value>API 密钥被拒绝。</value>
+  </data>
+    <data name="llm_error_not_found" xml:space="preserve">
+    <value>找不到模型或接口地址，请检查 API 地址和模型名称。</value>
+  </data>
+    <data name="llm_error_rate_limited" xml:space="preserve">
+    <value>模型正忙，请稍后再试。</value>
+  </data>
+    <data name="llm_error_network" xml:space="preserve">
+    <value>无法连接到模型，请检查网络连接。</value>
+  </data>
+    <data name="llm_error_cancelled" xml:space="preserve">
+    <value>请求已取消。</value>
+  </data>
+    <data name="llm_not_configured" xml:space="preserve">
+    <value>先在设置中配置 API 密钥，然后就能开始对话了。</value>
+  </data>
+    <data name="llm_open_settings" xml:space="preserve">
+    <value>打开设置</value>
+  </data>
+    <data name="llm_system_prompt" xml:space="preserve">
+    <value>你是澄迹的学习助手，帮助同学理解考试成绩、分析优势与薄弱之处，并给出切实可行的学习建议。回答要简洁、鼓励人、诚实，并使用同学所用的语言。</value>
   </data>
     <data name="average" xml:space="preserve">
     <value>平均分</value>

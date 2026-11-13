@@ -337,6 +337,9 @@ public sealed class SettingsRepositoryTests : IAsyncLifetime
         Assert.Equal(TrendMetric.Marks, settings.TrendMetric);
         Assert.Equal(TrendMetric.Marks, settings.SubjectMetric);
         Assert.Equal(HistoryViewMode.Standard, settings.HistoryViewMode);
+        Assert.Equal((int)LlmProviderOption.None, settings.LlmProviderValue);
+        Assert.Equal(string.Empty, settings.LlmBaseUrl);
+        Assert.Equal(string.Empty, settings.LlmModel);
     }
 
     [Fact]
@@ -374,7 +377,10 @@ public sealed class SettingsRepositoryTests : IAsyncLifetime
             SelectedSubjects = "physics,chemistry",
             TrendMetric = TrendMetric.Rate,
             SubjectMetric = TrendMetric.Rate,
-            HistoryViewMode = HistoryViewMode.Compact
+            HistoryViewMode = HistoryViewMode.Compact,
+            LlmProviderValue = (int)LlmProviderOption.LongCat,
+            LlmBaseUrl = "https://api.longcat.chat/openai",
+            LlmModel = "LongCat-2.5"
         });
 
         var stored = await _repository.GetAsync();
@@ -391,6 +397,9 @@ public sealed class SettingsRepositoryTests : IAsyncLifetime
         Assert.Equal(TrendMetric.Rate, stored.TrendMetric);
         Assert.Equal(TrendMetric.Rate, stored.SubjectMetric);
         Assert.Equal(HistoryViewMode.Compact, stored.HistoryViewMode);
+        Assert.Equal((int)LlmProviderOption.LongCat, stored.LlmProviderValue);
+        Assert.Equal("https://api.longcat.chat/openai", stored.LlmBaseUrl);
+        Assert.Equal("LongCat-2.5", stored.LlmModel);
         Assert.Single(await _context.Settings.ToListAsync());
     }
 

@@ -90,6 +90,23 @@ public sealed class SettingsService(ISettingsRepository repository)
         CancellationToken cancellationToken = default) =>
         UpdateAsync(settings => settings.HistoryViewMode = mode, cancellationToken);
 
+    /// <summary>Stores the assistant provider, base URL and model in one write.</summary>
+    public Task SetLlmConfigAsync(
+        int providerValue,
+        string? baseUrl,
+        string? model,
+        CancellationToken cancellationToken = default)
+    {
+        return UpdateAsync(
+            settings =>
+            {
+                settings.LlmProviderValue = providerValue;
+                settings.LlmBaseUrl = baseUrl ?? string.Empty;
+                settings.LlmModel = model ?? string.Empty;
+            },
+            cancellationToken);
+    }
+
     /// <summary>Marks onboarding as finished, which is what lets the shell open the main window.</summary>
     public Task CompleteOnboardingAsync(CancellationToken cancellationToken = default)
     {

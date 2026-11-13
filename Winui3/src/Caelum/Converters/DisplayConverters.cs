@@ -121,3 +121,22 @@ public sealed partial class PinnedToVisibilityConverter : IValueConverter
         return value is Visibility.Visible;
     }
 }
+
+/// <summary>
+///     Shows an element only when a flag is set. The assistant bubble uses this to hide its progress
+///     ring once the streamed answer has finished.
+/// </summary>
+public sealed partial class BoolToVisibilityConverter : IValueConverter
+{
+    /// <inheritdoc />
+    public object Convert(object value, Type targetType, object parameter, string language)
+    {
+        return value is true ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    /// <inheritdoc />
+    public object ConvertBack(object value, Type targetType, object parameter, string language)
+    {
+        return value is Visibility.Visible;
+    }
+}
