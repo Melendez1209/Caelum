@@ -62,7 +62,11 @@
                     <AutoSuggestBox.ItemTemplate>
                         <DataTemplate>
                             <StackPanel Spacing="2">
-                                <TextBlock Text="{Binding Exam.Name}" />
+                                <TextBlock>
+                                    <TextBlock.Text>
+                                        <Binding Path="Exam.Name" />
+                                    </TextBlock.Text>
+                                </TextBlock>
                                 <TextBlock
                                     Style="{StaticResource CaptionTextBlockStyle}"
                                     Foreground="{ThemeResource TextFillColorSecondaryBrush}"
@@ -100,7 +104,20 @@
             <NavigationView.MenuItems>
                 <NavigationViewItem x:Name="HomeItem" Content="Home" Tag="Home" Icon="Home" />
                 <NavigationViewItem x:Name="HistoryItem" Content="History" Tag="History" Icon="AllApps" />
-                <NavigationViewItem x:Name="ProphetsItem" Content="Prophets" Tag="Prophets" Icon="Message" />
+                <!--
+                    The assistant tab is a parent whose children are the saved conversations plus a
+                    new-chat entry. The session items are rebuilt from AppServices.Chats, so their
+                    captions follow the stored titles and the chosen language.
+                -->
+                <NavigationViewItem x:Name="ProphetsItem" Content="Prophets" Tag="Prophets" Icon="Message">
+                    <NavigationViewItem.MenuItems>
+                        <NavigationViewItem
+                            x:Name="NewSessionItem"
+                            Content="New chat"
+                            Tag="NewSession"
+                            Icon="Add" />
+                    </NavigationViewItem.MenuItems>
+                </NavigationViewItem>
             </NavigationView.MenuItems>
 
             <!--

@@ -66,14 +66,17 @@ messages, Markdown files and similar content in British English.
 - Package versions: `Microsoft.WindowsAppSDK` 2.6.5, `Microsoft.Windows.SDK.BuildTools` 10.0.28000.2957,
   `LiveChartsCore.SkiaSharpView.WinUI` 2.1.0-dev-798, `CommunityToolkit.Common` 8.4.2,
   `CommunityToolkit.WinUI.Controls.SettingsControls` 8.2.251219, `Microsoft.Identity.Client` 4.92.0,
-  `System.Security.Cryptography.ProtectedData` 9.0.0, EF Core 9.0.20 (EF Core 10 needs .NET 10, so do not bump it).
+  `Microsoft.Extensions.DependencyInjection.Abstractions` 11.0.0,
+  `System.Security.Cryptography.ProtectedData` 11.0.0, `Markdig` 1.6.0,
+  EF Core 9.0.20 (EF Core 10 needs .NET 10, so do not bump it).
 - The Windows build uses the **native WinUI theme only**. The Android HCT/CAM16 palette engine was deliberately not
   ported, so there is no seed colour or palette style setting here. Do not reintroduce one.
 - Cloud services were dropped except Microsoft account sign in: no Firebase, AdMob, Gemini or ML Kit. The desktop app is
   local first. `MsalAuthService.ClientId` is empty until an Entra app is registered; until then the account card shows a
   "Coming soon" caption instead of a sign in button.
 - Localisation is maintained by hand in `Caelum.Core/Localization`. The old generator
-  (`tools\New-LocalizationResources.ps1` and `tools\winui-strings.xml`) was removed, so the `.resx` files must be kept in
+  (`tools\New-LocalizationResources.ps1` and `tools\winui-strings.xml`) was removed, so the `.resx` files must be kept
+  in
   step with the Android `res/values*` manually. Note that Android's `values-zh` holds **Traditional** and
   `values-zh-rCN` holds **Simplified**, which is the opposite of what the folder names suggest.
 - Navigation uses a single `MainFrame` driven by `NavigationView` and the WinUI `TitleBar`. The title bar's back button
@@ -131,7 +134,8 @@ Gotchas:
   which also prevents its `DOMContentLoaded` handler from registering. Don't build on it.
 - All UI strings are in `assets/values/translations.json` (locales `zh`, `zh-tw`, `en`, `en-GB`), applied via
   `data-i18n` attributes. Theme/lang dropdown state persists in `localStorage`.
-- The changelog section is fetched live from the GitHub API (`Melendez1209/Caelum`: releases, then commits fallback) — it
+- The changelog section is fetched live from the GitHub API (`Melendez1209/Caelum`: releases, then commits fallback) —
+  it
   is not stored in the repo.
 - `404.html` also loads `src/i18n.js` and shares the same translations file.
 

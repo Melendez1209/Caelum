@@ -100,6 +100,40 @@ public sealed class LlmServiceTests
         Assert.Contains("message 29", body);
     }
 
+    [Fact]
+    public async Task GenerateTitleAsyncSendsTheFirstMessageAndReturnsTheTitle()
+    {
+        var settings = new Settings
+        {
+            LlmProviderValue = (int)LlmProviderOption.LongCat,
+            LlmBaseUrl = "https://api.longcat.chat/openai",
+            LlmModel = "LongCat-2.5"
+        };
+
+        var secrets = new InMemorySecretStore();
+        secrets.Write(LlmService.ApiKeySlot, "key");
+
+        var handler = new FakeHttpMessageHandler(_ => JsonResponseFactory.Completion("Study plan"));
+
+        using var client = new OpenAiCompatibleLlmClient(handler);
+
+        var service = new LlmService(CreateSettingsService(settings), secrets, client);
+
+        var title = await service.GenerateTitleAsync("How do I study physics?");
+
+        Assert.Equal("Study plan", title);
+        Assert.Contains("How do I study physics?", handler.LastBody);
+        Assert.Contains("\"stream\":false", handler.LastBody);
+    }
+
+    [Fact]
+    public async Task GenerateTitleAsyncReturnsEmptyWhenNotConfigured()
+    {
+        var service = new LlmService(CreateSettingsService(new Settings()), new InMemorySecretStore());
+
+        Assert.Equal(string.Empty, await service.GenerateTitleAsync("Hi"));
+    }
+
     private static SettingsService CreateSettingsService(Settings settings)
     {
         var service = new SettingsService(new FakeSettingsRepository(settings));

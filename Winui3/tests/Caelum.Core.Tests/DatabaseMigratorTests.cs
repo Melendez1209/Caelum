@@ -44,7 +44,13 @@ public sealed class DatabaseMigratorTests : IAsyncLifetime
         Assert.Contains("LlmProviderValue", columns);
         Assert.Contains("LlmBaseUrl", columns);
         Assert.Contains("LlmModel", columns);
+        Assert.Contains("CurrentChatSessionId", columns);
         Assert.Equal(DatabaseMigrator.CurrentVersion, await GetUserVersionAsync());
+
+        var tables = await GetTablesAsync();
+
+        Assert.Contains("chat_sessions", tables);
+        Assert.Contains("chat_messages", tables);
     }
 
     [Fact]
@@ -75,7 +81,52 @@ public sealed class DatabaseMigratorTests : IAsyncLifetime
         Assert.Contains("LlmProviderValue", columns);
         Assert.Contains("LlmBaseUrl", columns);
         Assert.Contains("LlmModel", columns);
+        Assert.Contains("CurrentChatSessionId", columns);
         Assert.Equal(DatabaseMigrator.CurrentVersion, await GetUserVersionAsync());
+
+        var tables = await GetTablesAsync();
+
+        Assert.Contains("chat_sessions", tables);
+        Assert.Contains("chat_messages", tables);
+    }
+
+    [Fact]
+    public async Task MigratingAnExistingV2DatabaseAddsTheChatSchema()
+    {
+        // A database shipped at v2 has every settings column except the chat one, and no chat tables
+        await ExecuteAsync(@"
+            CREATE TABLE settings (
+                Id INTEGER NOT NULL PRIMARY KEY,
+                AppThemeValue INTEGER NOT NULL DEFAULT 0,
+                IsHighContrastMode INTEGER NOT NULL DEFAULT 0,
+                SelectedLanguage TEXT NOT NULL DEFAULT '',
+                IsFirstLogin INTEGER NOT NULL DEFAULT 1,
+                Identity INTEGER NOT NULL DEFAULT 0,
+                Grade INTEGER NOT NULL DEFAULT 0,
+                Region TEXT NOT NULL DEFAULT '',
+                SelectedSubjects TEXT NOT NULL DEFAULT '',
+                TrendMetric INTEGER NOT NULL DEFAULT 0,
+                SubjectMetric INTEGER NOT NULL DEFAULT 0,
+                HistoryViewMode INTEGER NOT NULL DEFAULT 1,
+                LlmProviderValue INTEGER NOT NULL DEFAULT 0,
+                LlmBaseUrl TEXT NOT NULL DEFAULT '',
+                LlmModel TEXT NOT NULL DEFAULT ''
+            );");
+        await ExecuteAsync("PRAGMA user_version = 2;");
+
+        await DatabaseMigrator.MigrateAsync(_context);
+
+        var columns = await GetSettingsColumnsAsync();
+
+        Assert.Contains("CurrentChatSessionId", columns);
+
+        var tables = await GetTablesAsync();
+
+        Assert.Contains("chat_sessions", tables);
+        Assert.Contains("chat_messages", tables);
+
+        // The version stays at v2
+        Assert.Equal(2, await GetUserVersionAsync());
     }
 
     [Fact]
@@ -85,6 +136,24 @@ public sealed class DatabaseMigratorTests : IAsyncLifetime
         await DatabaseMigrator.MigrateAsync(_context);
 
         Assert.Equal(DatabaseMigrator.CurrentVersion, await GetUserVersionAsync());
+    }
+
+    private async Task<HashSet<string>> GetTablesAsync()
+    {
+        var tables = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        using var command = _keepAlive.CreateCommand();
+        command.CommandText = "SELECT name FROM sqlite_master WHERE type = 'table'";
+
+        using var reader = await command.ExecuteReaderAsync();
+
+        while (await reader.ReadAsync())
+        {
+            if (reader.GetString(0) is { Length: > 0 } name)
+                tables.Add(name);
+        }
+
+        return tables;
     }
 
     private async Task<HashSet<string>> GetSettingsColumnsAsync()

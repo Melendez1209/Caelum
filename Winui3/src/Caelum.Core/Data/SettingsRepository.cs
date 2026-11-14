@@ -84,6 +84,7 @@ public sealed class SettingsRepository(CaelumDbContext context) : ISettingsRepos
             stored.LlmProviderValue = settings.LlmProviderValue;
             stored.LlmBaseUrl = settings.LlmBaseUrl;
             stored.LlmModel = settings.LlmModel;
+            stored.CurrentChatSessionId = settings.CurrentChatSessionId;
         }
 
         await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);

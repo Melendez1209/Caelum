@@ -373,6 +373,28 @@
     <data name="llm_system_prompt" xml:space="preserve">
     <value>你是澄迹的学习助手，帮助同学理解考试成绩、分析优势与薄弱之处，并给出切实可行的学习建议。回答要简洁、鼓励人、诚实，并使用同学所用的语言。</value>
   </data>
+    <data name="llm_title_prompt" xml:space="preserve">
+    <value>用不超过 20 个字总结下面这句话，只输出标题，不要输出其他内容：
+%1$s</value>
+  </data>
+    <data name="chat_sessions" xml:space="preserve">
+    <value>会话</value>
+  </data>
+    <data name="chat_new_session" xml:space="preserve">
+    <value>新建会话</value>
+  </data>
+    <data name="chat_switch_session" xml:space="preserve">
+    <value>切换会话</value>
+  </data>
+    <data name="chat_delete_confirm" xml:space="preserve">
+    <value>删除这个会话及其所有消息？</value>
+  </data>
+    <data name="chat_title_default" xml:space="preserve">
+    <value>新会话</value>
+  </data>
+    <data name="chat_delete_session" xml:space="preserve">
+    <value>删除会话</value>
+  </data>
     <data name="average" xml:space="preserve">
     <value>平均分</value>
   </data>

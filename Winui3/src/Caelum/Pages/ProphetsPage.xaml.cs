@@ -16,18 +16,22 @@ namespace Caelum.Pages;
 
 /// <summary>
 ///     The conversation page for the AI assistant. The student's messages and the assistant's
-///     replies appear as bubbles; the assistant streams its answer through the configured model.
+///     replies appear as bubbles; the assistant streams its answer through the configured model,
+///     and every turn is saved to the session the navigation pane is showing.
 /// </summary>
 public sealed partial class ProphetsPage
 {
     private readonly StringLocalizer _strings = new();
-    private readonly ObservableCollection<ChatMessage> _messages = [];
+    private readonly ObservableCollection<ChatBubble> _messages = [];
 
     /// <summary>
     ///     Cancels the pending reply when the page goes away, so an answer cannot land on a
     ///     conversation the student has already left. One source per request.
     /// </summary>
     private CancellationTokenSource? _replyCancellation;
+
+    /// <summary>Sessions a title has already been requested for, so a quick second message cannot ask twice.</summary>
+    private readonly HashSet<long> _titleRequested = [];
 
     /// <summary>Creates the page, binds the message list and translates the captions.</summary>
     public ProphetsPage()
@@ -59,9 +63,11 @@ public sealed partial class ProphetsPage
     }
 
     /// <inheritdoc />
-    protected override void OnNavigatedTo(NavigationEventArgs e)
+    protected override async void OnNavigatedTo(NavigationEventArgs e)
     {
         base.OnNavigatedTo(e);
+
+        await ReloadAsync().ConfigureAwait(true);
 
         // The settings page may have changed the provider while this page was away
         ApplyConfigurationState();
@@ -75,6 +81,23 @@ public sealed partial class ProphetsPage
         _replyCancellation = null;
 
         base.OnNavigatedFrom(e);
+    }
+
+    /// <summary>
+    ///     Reloads the current session's saved turns. The navigation shell calls this after it has
+    ///     switched or deleted a session, so the page never has to listen for chat changes itself.
+    /// </summary>
+    public async Task ReloadAsync()
+    {
+        try
+        {
+            await AppServices.Chats.LoadAsync().ConfigureAwait(true);
+            await LoadMessagesAsync().ConfigureAwait(true);
+        }
+        catch (Exception)
+        {
+            // A session that cannot be loaded leaves an empty page rather than a broken one
+        }
     }
 
     private void OnPromptPreviewKeyDown(object sender, KeyRoutedEventArgs e)
@@ -99,13 +122,41 @@ public sealed partial class ProphetsPage
         Frame?.Navigate(typeof(SettingsPage));
     }
 
+    /// <summary>Replaces the message list with the current session's saved turns.</summary>
+    private async Task LoadMessagesAsync()
+    {
+        _messages.Clear();
+
+        var session = AppServices.Chats.CurrentSession;
+
+        if (session is null) return;
+
+        var messages = await AppServices.Chats.GetMessagesAsync(session.Id).ConfigureAwait(true);
+
+        foreach (var message in messages)
+        {
+            _messages.Add(new ChatBubble(
+                message.Content,
+                string.Equals(message.Role, "user", StringComparison.Ordinal)));
+        }
+
+        if (_messages.Count > 0)
+            DispatcherQueue.TryEnqueue(() => MessagesList.ScrollIntoView(_messages[^1]));
+    }
+
     /// <summary>
-    ///     Shows the student's message at once, then replaces the pending bubble with the model's
-    ///     answer as it arrives.
+    ///     Shows the student's message at once, saves it, then replaces the pending bubble with the
+    ///     model's answer as it arrives.
     /// </summary>
     private async void SendMessage()
     {
         if (!AppServices.Llm.IsConfigured) return;
+
+        var session = AppServices.Chats.CurrentSession;
+
+        if (session is null) return;
+
+        var sessionId = session.Id;
 
         PromptBox.Document.GetText(TextGetOptions.None, out var text);
 
@@ -113,11 +164,22 @@ public sealed partial class ProphetsPage
 
         if (string.IsNullOrEmpty(trimmed)) return;
 
-        AddMessage(new ChatMessage(NormalizeLineEndings(trimmed), isUser: true));
+        var userText = NormalizeLineEndings(trimmed);
+
+        AddMessage(new ChatBubble(userText, isUser: true));
 
         PromptBox.Document.SetText(TextSetOptions.None, string.Empty);
 
-        var pending = new ChatMessage(string.Empty, isUser: false, isPending: true);
+        try
+        {
+            await AppServices.Chats.AddMessageAsync(sessionId, "user", userText).ConfigureAwait(true);
+        }
+        catch (Exception)
+        {
+            // The bubble stays on screen; the next send will try to persist again
+        }
+
+        var pending = new ChatBubble(string.Empty, isUser: false, isPending: true);
 
         AddMessage(pending);
 
@@ -132,7 +194,7 @@ public sealed partial class ProphetsPage
             pending.RaisePropertyChanged(nameof(pending.Text));
         });
 
-        _replyCancellation?.Cancel();
+        await _replyCancellation?.CancelAsync()!;
         _replyCancellation?.Dispose();
         _replyCancellation = new CancellationTokenSource();
 
@@ -143,21 +205,31 @@ public sealed partial class ProphetsPage
             var result = await AppServices.Llm.CompleteAsync(
                 history,
                 progress,
-                _replyCancellation.Token);
+                _replyCancellation.Token).ConfigureAwait(true);
 
             pending.IsPending = false;
             pending.Text = result.Content;
             pending.RaisePropertyChanged(nameof(pending.IsPending));
             pending.RaisePropertyChanged(nameof(pending.Text));
 
-            if (!result.IsSuccess)
+            if (result.IsSuccess)
             {
-                // A partial answer is worth keeping; without one the pending bubble is simply dropped
-                if (string.IsNullOrEmpty(result.Content))
-                    _messages.Remove(pending);
-
-                AddMessage(new ChatMessage(LocalizeLlmError(result.ErrorKind), isUser: false));
+                await SaveAssistantMessageAsync(sessionId, result.Content).ConfigureAwait(true);
             }
+            else
+            {
+                // A partial answer is worth keeping, and the error is saved as its own turn
+                if (!string.IsNullOrEmpty(result.Content))
+                    await SaveAssistantMessageAsync(sessionId, result.Content).ConfigureAwait(true);
+
+                var errorText = LocalizeLlmError(result.ErrorKind);
+
+                AddMessage(new ChatBubble(errorText, isUser: false));
+
+                await SaveAssistantMessageAsync(sessionId, errorText).ConfigureAwait(true);
+            }
+
+            await MaybeGenerateTitleAsync(sessionId, userText).ConfigureAwait(true);
         }
         catch (OperationCanceledException)
         {
@@ -168,7 +240,11 @@ public sealed partial class ProphetsPage
         {
             _messages.Remove(pending);
 
-            AddMessage(new ChatMessage(_strings.Get("llm_error_generic"), isUser: false));
+            var errorText = _strings.Get("llm_error_generic");
+
+            AddMessage(new ChatBubble(errorText, isUser: false));
+
+            await SaveAssistantMessageAsync(sessionId, errorText).ConfigureAwait(true);
         }
         finally
         {
@@ -177,6 +253,51 @@ public sealed partial class ProphetsPage
             _replyCancellation = null;
 
             UpdateSendState();
+        }
+    }
+
+    private async Task SaveAssistantMessageAsync(long sessionId, string content)
+    {
+        try
+        {
+            await AppServices.Chats.AddMessageAsync(sessionId, "assistant", content).ConfigureAwait(true);
+        }
+        catch (Exception)
+        {
+            // Persistence is the best effort; the bubble is already on screen
+        }
+    }
+
+    /// <summary>
+    ///     Names a session from its first message once the reply is in. The model's summary is used
+    ///     when it answers, otherwise the message itself is truncated.
+    /// </summary>
+    private async Task MaybeGenerateTitleAsync(long sessionId, string firstMessage)
+    {
+        var session = AppServices.Chats.CurrentSession;
+
+        if (session is null || session.Id != sessionId) return;
+
+        if (!string.IsNullOrWhiteSpace(session.Title)) return;
+
+        if (!_titleRequested.Add(sessionId)) return;
+
+        try
+        {
+            using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+
+            var title = await AppServices.Llm
+                .GenerateTitleAsync(firstMessage, cancellation.Token)
+                .ConfigureAwait(true);
+
+            if (string.IsNullOrWhiteSpace(title))
+                title = firstMessage.Length > 40 ? firstMessage[..40] : firstMessage;
+
+            await AppServices.Chats.RenameAsync(sessionId, title, cancellation.Token).ConfigureAwait(true);
+        }
+        catch (Exception)
+        {
+            // Title generation is the best effort; the default title stays
         }
     }
 
@@ -195,7 +316,7 @@ public sealed partial class ProphetsPage
     private static string NormalizeLineEndings(string text) =>
         text.Replace("\r\n", "\n").Replace("\r", "\n");
 
-    private void AddMessage(ChatMessage message)
+    private void AddMessage(ChatBubble message)
     {
         _messages.Add(message);
 
@@ -210,6 +331,7 @@ public sealed partial class ProphetsPage
         SendButton.IsEnabled =
             !string.IsNullOrWhiteSpace(text) &&
             AppServices.Llm.IsConfigured &&
+            AppServices.Chats.CurrentSession is not null &&
             _replyCancellation is null;
     }
 
@@ -232,18 +354,11 @@ public sealed partial class ProphetsPage
     }
 
     /// <summary>One turn of the conversation. Streaming replies raise change notifications.</summary>
-    private sealed class ChatMessage : INotifyPropertyChanged
+    private sealed class ChatBubble(string text, bool isUser, bool isPending = false) : INotifyPropertyChanged
     {
-        public ChatMessage(string text, bool isUser, bool isPending = false)
-        {
-            Text = text;
-            IsUser = isUser;
-            IsPending = isPending;
-        }
-
-        public string Text { get; set; }
-        public bool IsUser { get; }
-        public bool IsPending { get; set; }
+        public string Text { get; set; } = text;
+        public bool IsUser { get; } = isUser;
+        public bool IsPending { get; set; } = isPending;
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -260,7 +375,7 @@ public sealed partial class ProphetsPage
 
         protected override DataTemplate? SelectTemplateCore(object item, DependencyObject container)
         {
-            return item is ChatMessage { IsUser: true } ? UserTemplate : AssistantTemplate;
+            return item is ChatBubble { IsUser: true } ? UserTemplate : AssistantTemplate;
         }
     }
 }

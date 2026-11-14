@@ -5,6 +5,7 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:converters="using:Caelum.Converters"
+    xmlns:controls="using:Caelum.Controls"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
@@ -15,8 +16,10 @@
         from the message, so the student's own messages sit on the right in the accent colour and
         the assistant's on the left on the card surface.
 
-        The assistant bubble carries a progress ring that is only visible while the answer is still
-        arriving, so a streamed reply reads the way a live one would.
+        Each bubble sits in a percentage column: the assistant's answer may use up to 78% of the
+        width and the student's message 58%, so a long turn wraps instead of being clipped while a
+        short one still hugs its text. The assistant bubble carries a progress ring that is only
+        visible while the answer is still arriving, and renders its Markdown source.
 
         The item style drops the list's own padding and minimum height: a chat row is exactly as
         tall as its bubble, and the bubble carries its own inset.
@@ -37,43 +40,74 @@
 
         <DataTemplate x:Key="UserMessageTemplate">
             <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="0.42*" />
+                    <ColumnDefinition Width="0.58*" />
+                </Grid.ColumnDefinitions>
+
                 <Border
+                    Grid.Column="1"
                     HorizontalAlignment="Right"
-                    MaxWidth="520"
                     Padding="12,8"
                     CornerRadius="12"
                     Background="{ThemeResource AccentFillColorSecondaryBrush}">
                     <TextBlock
-                        Text="{Binding Text}"
                         TextWrapping="Wrap"
-                        Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}" />
+                        Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}">
+                        <TextBlock.Text>
+                            <Binding Path="Text" />
+                        </TextBlock.Text>
+                    </TextBlock>
                 </Border>
             </Grid>
         </DataTemplate>
 
         <DataTemplate x:Key="AssistantMessageTemplate">
             <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="0.78*" />
+                    <ColumnDefinition Width="0.22*" />
+                </Grid.ColumnDefinitions>
+
                 <Border
+                    Grid.Column="0"
                     HorizontalAlignment="Left"
-                    MaxWidth="520"
                     Padding="12,8"
                     CornerRadius="12"
                     Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                     BorderThickness="1">
-                    <StackPanel Orientation="Horizontal" Spacing="8">
+                    <!--
+                        A grid rather than a horizontal StackPanel: a StackPanel measures its children
+                        with an infinite width, which stops the Markdown block from ever wrapping.
+                    -->
+                    <Grid ColumnSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
                         <ProgressRing
+                            Grid.Column="0"
                             Width="16"
                             Height="16"
-                            VerticalAlignment="Center"
-                            IsActive="{Binding IsPending}"
-                            Visibility="{Binding IsPending, Converter={StaticResource BoolToVisibility}}" />
+                            VerticalAlignment="Center">
+                            <ProgressRing.Visibility>
+                                <Binding Path="IsPending" Converter="{StaticResource BoolToVisibility}" />
+                            </ProgressRing.Visibility>
+                            <ProgressRing.IsActive>
+                                <Binding Path="IsPending" />
+                            </ProgressRing.IsActive>
+                        </ProgressRing>
 
-                        <TextBlock
-                            MinWidth="40"
-                            Text="{Binding Text}"
-                            TextWrapping="Wrap" />
-                    </StackPanel>
+                        <controls:MarkdownTextBlock
+                            Grid.Column="1"
+                            VerticalAlignment="Center">
+                            <controls:MarkdownTextBlock.Text>
+                                <Binding Path="Text" />
+                            </controls:MarkdownTextBlock.Text>
+                        </controls:MarkdownTextBlock>
+                    </Grid>
                 </Border>
             </Grid>
         </DataTemplate>

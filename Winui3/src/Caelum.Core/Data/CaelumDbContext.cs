@@ -18,6 +18,12 @@ public sealed class CaelumDbContext(DbContextOptions<CaelumDbContext> options) :
     /// <summary>The single settings row.</summary>
     public DbSet<Settings> Settings => Set<Settings>();
 
+    /// <summary>Every saved assistant conversation.</summary>
+    public DbSet<ChatSession> ChatSessions => Set<ChatSession>();
+
+    /// <summary>Every assistant message, belonging to a session.</summary>
+    public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
+
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -61,6 +67,36 @@ public sealed class CaelumDbContext(DbContextOptions<CaelumDbContext> options) :
             entity.Property(settings => settings.SelectedSubjects).IsRequired().HasMaxLength(512);
             entity.Property(settings => settings.LlmBaseUrl).IsRequired().HasMaxLength(512);
             entity.Property(settings => settings.LlmModel).IsRequired().HasMaxLength(128);
+        });
+
+        modelBuilder.Entity<ChatSession>(entity =>
+        {
+            entity.ToTable("chat_sessions");
+
+            entity.HasKey(session => session.Id);
+            entity.Property(session => session.Id).ValueGeneratedOnAdd();
+            entity.Property(session => session.Title).IsRequired().HasMaxLength(256);
+            entity.Property(session => session.CreatedAt);
+            entity.Property(session => session.UpdatedAt);
+
+            entity.HasMany(session => session.Messages)
+                .WithOne(message => message.Session!)
+                .HasForeignKey(message => message.SessionId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ChatMessage>(entity =>
+        {
+            entity.ToTable("chat_messages");
+
+            entity.HasKey(message => message.Id);
+            entity.Property(message => message.Id).ValueGeneratedOnAdd();
+            entity.Property(message => message.SessionId);
+            entity.Property(message => message.Role).IsRequired().HasMaxLength(16);
+            entity.Property(message => message.Content).IsRequired();
+            entity.Property(message => message.CreatedAt);
+
+            entity.HasIndex(message => message.SessionId);
         });
     }
 }

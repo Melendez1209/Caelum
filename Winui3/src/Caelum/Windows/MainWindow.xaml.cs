@@ -1,3 +1,4 @@
+using System.Globalization;
 using Caelum.Core.Data;
 using Caelum.Core.Localization;
 using Caelum.Pages;
@@ -54,6 +55,10 @@ public sealed partial class MainWindow
 
         ApplyCaptions();
 
+        // The session list under the assistant tab follows the stored conversations
+        AppServices.Chats.Reloaded += OnChatsReloaded;
+        BuildSessions();
+
         // Start on the dashboard. The navigation item below is selected to match.
         MainFrame.Navigate(typeof(HomePage));
 
@@ -88,11 +93,124 @@ public sealed partial class MainWindow
         HomeItem.Content = _strings.Get("home");
         HistoryItem.Content = _strings.Get("history");
         ProphetsItem.Content = _strings.Get("prophets");
+        NewSessionItem.Content = _strings.Get("chat_new_session");
         // The pane's settings item is built by NavigationView itself and comes with the framework's
         // own caption, which would keep answering in the shell language after the student switches.
         // SettingsItem is typed object here, as opposed to the NavigationViewItem it really is
         if (Navigation.SettingsItem is NavigationViewItem settingsItem)
             settingsItem.Content = _strings.Get("settings");
+    }
+
+    // ------------------------------------------------------------------
+    // Assistant sessions
+    // ------------------------------------------------------------------
+
+    private void OnChatsReloaded(object? sender, EventArgs e)
+    {
+        BuildSessions();
+    }
+
+    /// <summary>
+    ///     Rebuilds the session entries under the assistant tab. The new-chat entry stays at the top,
+    ///     and the sessions are inserted below it in the order the service reports (most recent first).
+    /// </summary>
+    private void BuildSessions()
+    {
+        // Drop the previous session entries, keeping the new-chat entry that sits at the top
+        while (ProphetsItem.MenuItems.Count > 1)
+            ProphetsItem.MenuItems.RemoveAt(1);
+
+        var sessions = AppServices.Chats.Sessions;
+
+        for (var index = sessions.Count - 1; index >= 0; index--)
+        {
+            var session = sessions[index];
+
+            var item = new NavigationViewItem
+            {
+                Content = string.IsNullOrWhiteSpace(session.Title)
+                    ? _strings.Get("chat_title_default")
+                    : session.Title,
+                Tag = $"Session:{session.Id}",
+                Icon = new SymbolIcon(Symbol.Message)
+            };
+
+            var delete = new MenuFlyoutItem
+            {
+                Text = _strings.Get("chat_delete_session"),
+                Tag = session.Id
+            };
+
+            delete.Click += OnDeleteSessionClick;
+
+            var flyout = new MenuFlyout();
+            flyout.Items.Add(delete);
+
+            item.ContextFlyout = flyout;
+
+            ProphetsItem.MenuItems.Insert(1, item);
+        }
+    }
+
+    private async Task NewSessionAsync()
+    {
+        await AppServices.Chats.CreateAsync().ConfigureAwait(true);
+
+        MainFrame.Navigate(typeof(ProphetsPage));
+    }
+
+    private async Task SwitchSessionAsync(long sessionId)
+    {
+        await AppServices.Chats.SwitchAsync(sessionId).ConfigureAwait(true);
+
+        if (MainFrame.Content is ProphetsPage page)
+            await page.ReloadAsync().ConfigureAwait(true);
+        else
+            MainFrame.Navigate(typeof(ProphetsPage));
+    }
+
+    private async void OnDeleteSessionClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuFlyoutItem item || item.Tag is not long sessionId) return;
+
+        var dialog = new ContentDialog
+        {
+            Title = _strings.Get("attention"),
+            Content = _strings.Get("chat_delete_confirm"),
+            PrimaryButtonText = _strings.Get("delete"),
+            CloseButtonText = _strings.Get("cancel"),
+            XamlRoot = MainFrame.XamlRoot
+        };
+
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
+
+        await AppServices.Chats.DeleteAsync(sessionId).ConfigureAwait(true);
+
+        BuildSessions();
+
+        if (MainFrame.Content is ProphetsPage page)
+            await page.ReloadAsync().ConfigureAwait(true);
+    }
+
+    /// <summary>
+    ///     Picks the navigation entry that represents the conversation the chat page is showing, so
+    ///     the pane highlights the current session rather than only the assistant tab.
+    /// </summary>
+    private NavigationViewItem ResolveProphetsItem()
+    {
+        var currentId = AppServices.Chats.CurrentSession?.Id;
+
+        if (currentId is not null)
+        {
+            foreach (var item in ProphetsItem.MenuItems)
+            {
+                if (item is NavigationViewItem child &&
+                    string.Equals(child.Tag as string, $"Session:{currentId.Value}", StringComparison.Ordinal))
+                    return child;
+            }
+        }
+
+        return ProphetsItem;
     }
 
     /// <summary>
@@ -206,7 +324,9 @@ public sealed partial class MainWindow
     ///     Routes a pane selection. Every tag is matched explicitly: a catch-all would quietly send
     ///     a misspelt or newly added item to the dashboard instead of showing that it is unhandled.
     /// </summary>
-    private void OnTabSelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
+    private async void OnTabSelectionChanged(
+        NavigationView sender,
+        NavigationViewSelectionChangedEventArgs args)
     {
         // NavigationView contributes a settings item of its own, below the footer items and shown
         // without being asked for, because IsSettingsVisible is true by default. The control builds
@@ -235,6 +355,26 @@ public sealed partial class MainWindow
             case "Prophets":
                 MainFrame.Navigate(typeof(ProphetsPage));
                 break;
+
+            case "NewSession":
+                await NewSessionAsync().ConfigureAwait(true);
+                break;
+
+            default:
+                // A session entry carries its id in the tag; anything else is left alone so a
+                // misspelt tag cannot quietly navigate to the dashboard
+                if (item.Tag is string tag &&
+                    tag.StartsWith("Session:", StringComparison.Ordinal) &&
+                    long.TryParse(
+                        tag["Session:".Length..],
+                        NumberStyles.Integer,
+                        CultureInfo.InvariantCulture,
+                        out var sessionId))
+                {
+                    await SwitchSessionAsync(sessionId).ConfigureAwait(true);
+                }
+
+                break;
         }
     }
 
@@ -252,7 +392,7 @@ public sealed partial class MainWindow
         {
             HomePage => HomeItem,
             HistoryPage => HistoryItem,
-            ProphetsPage => ProphetsItem,
+            ProphetsPage => ResolveProphetsItem(),
             SettingsPage when Navigation.SettingsItem is NavigationViewItem settingsItem => settingsItem,
             _ => Navigation.SelectedItem
         };
@@ -272,6 +412,7 @@ public sealed partial class MainWindow
     private void OnClosed(object sender, WindowEventArgs args)
     {
         _themeService.ThemeChanged -= OnThemeChanged;
+        AppServices.Chats.Reloaded -= OnChatsReloaded;
 
         AppServices.Shutdown();
     }

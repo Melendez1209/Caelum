@@ -60,4 +60,7 @@ public sealed class Settings
 
     /// <summary>Model name sent with every assistant request.</summary>
     public string LlmModel { get; set; } = string.Empty;
+
+    /// <summary>Id of the assistant session to reopen, or zero when none is stored.</summary>
+    public long CurrentChatSessionId { get; set; }
 }

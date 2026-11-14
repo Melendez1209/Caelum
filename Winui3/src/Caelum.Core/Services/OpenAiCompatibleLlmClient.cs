@@ -44,15 +44,33 @@ public sealed class OpenAiCompatibleLlmClient : IDisposable
     ///     Sends a chat completion request. Streaming is requested by default, and the client also
     ///     accepts a plain JSON answer, because a few gateways ignore <c>stream</c>.
     /// </summary>
-    public Task<LlmResult> CompleteAsync(
+    public async Task<LlmResult> CompleteAsync(
         string baseUrl,
         string apiKey,
         string model,
         IReadOnlyList<LlmMessage> messages,
         bool stream = true,
+        int maxTokens = MaxTokens,
         IProgress<string>? progress = null,
-        CancellationToken cancellationToken = default) =>
-        CompleteAsync(baseUrl, apiKey, model, messages, stream, MaxTokens, progress, cancellationToken);
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(baseUrl);
+        ArgumentException.ThrowIfNullOrWhiteSpace(apiKey);
+        ArgumentException.ThrowIfNullOrWhiteSpace(model);
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, BuildChatUrl(baseUrl))
+        {
+            Content = JsonContent.Create(new ChatCompletionRequest(
+                model,
+                messages.Select(message => new LlmMessageContent(message.Role, message.Content)).ToList(),
+                stream,
+                maxTokens))
+        };
+
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+
+        return await SendAsync(request, stream, progress, cancellationToken).ConfigureAwait(false);
+    }
 
     /// <summary>
     ///     Sends the smallest possible completion to prove the key, base URL and model name are
@@ -89,34 +107,6 @@ public sealed class OpenAiCompatibleLlmClient : IDisposable
             return trimmed + "/chat/completions";
 
         return trimmed + "/v1/chat/completions";
-    }
-
-    private async Task<LlmResult> CompleteAsync(
-        string baseUrl,
-        string apiKey,
-        string model,
-        IReadOnlyList<LlmMessage> messages,
-        bool stream,
-        int maxTokens,
-        IProgress<string>? progress,
-        CancellationToken cancellationToken)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(baseUrl);
-        ArgumentException.ThrowIfNullOrWhiteSpace(apiKey);
-        ArgumentException.ThrowIfNullOrWhiteSpace(model);
-
-        using var request = new HttpRequestMessage(HttpMethod.Post, BuildChatUrl(baseUrl))
-        {
-            Content = JsonContent.Create(new ChatCompletionRequest(
-                model,
-                messages.Select(message => new LlmMessageContent(message.Role, message.Content)).ToList(),
-                stream,
-                maxTokens))
-        };
-
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
-
-        return await SendAsync(request, stream, progress, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<LlmResult> SendAsync(

@@ -107,6 +107,54 @@ public sealed class LlmService(
             .ConfigureAwait(false);
     }
 
+    /// <summary>
+    ///     Asks the model for a short title that summarises the first message of a new session. The
+    ///     title falls back to an empty string when the model is unavailable, leaving the caller to
+    ///     use the truncated message instead.
+    /// </summary>
+    public async Task<string> GenerateTitleAsync(
+        string firstMessage,
+        CancellationToken cancellationToken = default)
+    {
+        var current = settings.Current;
+        var option = (LlmProviderOption)current.LlmProviderValue;
+
+        if (option == LlmProviderOption.None) return string.Empty;
+
+        var apiKey = ReadApiKey();
+
+        if (string.IsNullOrWhiteSpace(apiKey)) return string.Empty;
+
+        var baseUrl = ResolveBaseUrl(option, current.LlmBaseUrl);
+        var model = ResolveModel(option, current.LlmModel);
+
+        if (string.IsNullOrWhiteSpace(baseUrl) || string.IsNullOrWhiteSpace(model)) return string.Empty;
+
+        var prompt = _strings.Format("llm_title_prompt", firstMessage);
+
+        var result = await _client
+            .CompleteAsync(
+                baseUrl,
+                apiKey,
+                model,
+                [new LlmMessage("user", prompt)],
+                stream: false,
+                maxTokens: 48,
+                cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
+
+        if (!result.IsSuccess) return string.Empty;
+
+        var title = result.Content.Trim();
+
+        if (title.Length == 0) return string.Empty;
+
+        // Keep the title on one line and inside the column's reach
+        var firstLine = title.Split('\n')[0].Trim();
+
+        return firstLine.Length > 40 ? firstLine[..40] : firstLine;
+    }
+
     private string? ReadApiKey() => secrets.Read(ApiKeySlot);
 
     private static string ResolveBaseUrl(LlmProviderOption option, string stored)

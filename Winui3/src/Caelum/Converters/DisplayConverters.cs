@@ -140,3 +140,5 @@ public sealed partial class BoolToVisibilityConverter : IValueConverter
         return value is Visibility.Visible;
     }
 }
+
+

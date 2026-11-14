@@ -20,9 +20,9 @@ public static class DatabaseMigrator
     public const int CurrentVersion = 2;
 
     /// <summary>
-    ///     Creates the schema when the database is new, then brings an existing database up to
-    ///     <see cref="CurrentVersion" />. Every statement is idempotent, so a partially upgraded
-    ///     database can simply be visited again.
+    ///     Creates the schema when the database is new, then makes sure every column and table this
+    ///     build expects is present. The statements are idempotent, so a database that already reports
+    ///     <see cref="CurrentVersion" /> is still brought up to the full schema.
     /// </summary>
     public static async Task MigrateAsync(
         CaelumDbContext context,
@@ -30,17 +30,18 @@ public static class DatabaseMigrator
     {
         ArgumentNullException.ThrowIfNull(context);
 
-        // A fresh database is created at the latest schema, so the migration only has to record the version
+        // A fresh database is created at the latest schema, so the checks below only have to record the version
         await context.Database.EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);
+
+        // The schema stays at v2, so the assistant and chat additions are applied to every database,
+        // including one that already reports version 2
+        await AddMissingColumnsAsync(context, cancellationToken).ConfigureAwait(false);
+        await AddChatTablesAsync(context, cancellationToken).ConfigureAwait(false);
 
         var version = await GetUserVersionAsync(context, cancellationToken).ConfigureAwait(false);
 
-        if (version >= CurrentVersion) return;
-
-        if (version < 2)
-            await AddMissingColumnsAsync(context, cancellationToken).ConfigureAwait(false);
-
-        await SetUserVersionAsync(context, CurrentVersion, cancellationToken).ConfigureAwait(false);
+        if (version < CurrentVersion)
+            await SetUserVersionAsync(context, CurrentVersion, cancellationToken).ConfigureAwait(false);
     }
 
     private static async Task<int> GetUserVersionAsync(
@@ -143,6 +144,64 @@ public static class DatabaseMigrator
                     "ALTER TABLE settings ADD COLUMN LlmModel TEXT NOT NULL DEFAULT ''",
                     cancellationToken).ConfigureAwait(false);
             }
+
+            if (!existing.Contains("CurrentChatSessionId", StringComparer.OrdinalIgnoreCase))
+            {
+                await ExecuteAsync(
+                    connection,
+                    "ALTER TABLE settings ADD COLUMN CurrentChatSessionId INTEGER NOT NULL DEFAULT 0",
+                    cancellationToken).ConfigureAwait(false);
+            }
+        }
+        finally
+        {
+            if (!wasOpen) await connection.CloseAsync().ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>
+    ///     Creates the assistant conversation tables when they are missing. A fresh database already
+    ///     has them from <c>EnsureCreated</c>; a database created before the assistant existed needs
+    ///     both, and the messages table carries the cascade that removes its rows with the session.
+    /// </summary>
+    private static async Task AddChatTablesAsync(
+        CaelumDbContext context,
+        CancellationToken cancellationToken)
+    {
+        var connection = context.Database.GetDbConnection();
+
+        var wasOpen = connection.State == ConnectionState.Open;
+
+        if (!wasOpen) await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
+
+        try
+        {
+            await ExecuteAsync(
+                connection,
+                @"CREATE TABLE IF NOT EXISTS chat_sessions (
+                    Id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                    Title TEXT NOT NULL DEFAULT '',
+                    CreatedAt INTEGER NOT NULL DEFAULT 0,
+                    UpdatedAt INTEGER NOT NULL DEFAULT 0
+                )",
+                cancellationToken).ConfigureAwait(false);
+
+            await ExecuteAsync(
+                connection,
+                @"CREATE TABLE IF NOT EXISTS chat_messages (
+                    Id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                    SessionId INTEGER NOT NULL,
+                    Role TEXT NOT NULL DEFAULT '',
+                    Content TEXT NOT NULL DEFAULT '',
+                    CreatedAt INTEGER NOT NULL DEFAULT 0,
+                    FOREIGN KEY (SessionId) REFERENCES chat_sessions(Id) ON DELETE CASCADE
+                )",
+                cancellationToken).ConfigureAwait(false);
+
+            await ExecuteAsync(
+                connection,
+                "CREATE INDEX IF NOT EXISTS IX_chat_messages_SessionId ON chat_messages(SessionId)",
+                cancellationToken).ConfigureAwait(false);
         }
         finally
         {

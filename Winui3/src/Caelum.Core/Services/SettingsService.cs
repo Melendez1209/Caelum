@@ -107,6 +107,14 @@ public sealed class SettingsService(ISettingsRepository repository)
             cancellationToken);
     }
 
+    /// <summary>Stores which assistant session the student left open.</summary>
+    public Task SetCurrentChatSessionAsync(
+        long sessionId,
+        CancellationToken cancellationToken = default)
+    {
+        return UpdateAsync(settings => settings.CurrentChatSessionId = sessionId, cancellationToken);
+    }
+
     /// <summary>Marks onboarding as finished, which is what lets the shell open the main window.</summary>
     public Task CompleteOnboardingAsync(CancellationToken cancellationToken = default)
     {
