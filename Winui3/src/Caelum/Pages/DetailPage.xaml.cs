@@ -481,8 +481,13 @@ public sealed partial class DetailPage
     private void OnShare(object sender, RoutedEventArgs e) =>
         DesktopShare.ShareText(_exam?.Name ?? _strings.Get("exam"), _shareText);
 
-    private void OnOpenProphets(object sender, RoutedEventArgs e) =>
-        this.Frame.Navigate(typeof(ProphetsPage));
+    private void OnOpenProphets(object sender, RoutedEventArgs e)
+    {
+        if (_exam is null) return;
+
+        // The assistant reads this exam's scores, so the id travels with the navigation
+        this.Frame.Navigate(typeof(ProphetsPage), _exam.Id);
+    }
 
     /// <summary>One subject's figures on the detail page.</summary>
     /// <param name="SubjectKey">Stable subject key, used to pick a consistent colour.</param>

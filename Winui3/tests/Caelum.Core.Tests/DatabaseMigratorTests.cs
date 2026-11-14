@@ -51,6 +51,7 @@ public sealed class DatabaseMigratorTests : IAsyncLifetime
 
         Assert.Contains("chat_sessions", tables);
         Assert.Contains("chat_messages", tables);
+        Assert.Contains("ExamId", await GetTableColumnsAsync("chat_sessions"));
     }
 
     [Fact]
@@ -88,6 +89,7 @@ public sealed class DatabaseMigratorTests : IAsyncLifetime
 
         Assert.Contains("chat_sessions", tables);
         Assert.Contains("chat_messages", tables);
+        Assert.Contains("ExamId", await GetTableColumnsAsync("chat_sessions"));
     }
 
     [Fact]
@@ -124,9 +126,49 @@ public sealed class DatabaseMigratorTests : IAsyncLifetime
 
         Assert.Contains("chat_sessions", tables);
         Assert.Contains("chat_messages", tables);
+        Assert.Contains("ExamId", await GetTableColumnsAsync("chat_sessions"));
 
         // The version stays at v2
         Assert.Equal(2, await GetUserVersionAsync());
+    }
+
+    [Fact]
+    public async Task MigratingAddsTheSessionExamLink()
+    {
+        // A v2 database has the settings table and a session table created before the exam link
+        await ExecuteAsync(@"
+            CREATE TABLE settings (
+                Id INTEGER NOT NULL PRIMARY KEY,
+                AppThemeValue INTEGER NOT NULL DEFAULT 0,
+                IsHighContrastMode INTEGER NOT NULL DEFAULT 0,
+                SelectedLanguage TEXT NOT NULL DEFAULT '',
+                IsFirstLogin INTEGER NOT NULL DEFAULT 1,
+                Identity INTEGER NOT NULL DEFAULT 0,
+                Grade INTEGER NOT NULL DEFAULT 0,
+                Region TEXT NOT NULL DEFAULT '',
+                SelectedSubjects TEXT NOT NULL DEFAULT '',
+                TrendMetric INTEGER NOT NULL DEFAULT 0,
+                SubjectMetric INTEGER NOT NULL DEFAULT 0,
+                HistoryViewMode INTEGER NOT NULL DEFAULT 1,
+                LlmProviderValue INTEGER NOT NULL DEFAULT 0,
+                LlmBaseUrl TEXT NOT NULL DEFAULT '',
+                LlmModel TEXT NOT NULL DEFAULT '',
+                CurrentChatSessionId INTEGER NOT NULL DEFAULT 0
+            );");
+        await ExecuteAsync(@"
+            CREATE TABLE chat_sessions (
+                Id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                Title TEXT NOT NULL DEFAULT '',
+                CreatedAt INTEGER NOT NULL DEFAULT 0,
+                UpdatedAt INTEGER NOT NULL DEFAULT 0
+            );");
+        await ExecuteAsync("PRAGMA user_version = 2;");
+
+        await DatabaseMigrator.MigrateAsync(_context);
+
+        var columns = await GetTableColumnsAsync("chat_sessions");
+
+        Assert.Contains("ExamId", columns);
     }
 
     [Fact]
@@ -158,10 +200,15 @@ public sealed class DatabaseMigratorTests : IAsyncLifetime
 
     private async Task<HashSet<string>> GetSettingsColumnsAsync()
     {
+        return await GetTableColumnsAsync("settings");
+    }
+
+    private async Task<HashSet<string>> GetTableColumnsAsync(string tableName)
+    {
         var columns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         using var command = _keepAlive.CreateCommand();
-        command.CommandText = "PRAGMA table_info(settings)";
+        command.CommandText = $"PRAGMA table_info({tableName})";
 
         using var reader = await command.ExecuteReaderAsync();
 

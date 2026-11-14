@@ -85,17 +85,24 @@ public sealed class ChatService
         }
     }
 
-    /// <summary>Creates a new empty session and makes it current.</summary>
-    public async Task CreateAsync(CancellationToken cancellationToken = default)
+    /// <summary>
+    ///     Creates a new session and makes it current. Passing an exam id links the session to that
+    ///     exam, so reopening it brings the exam context back.
+    /// </summary>
+    public async Task CreateAsync(
+        long examId = 0,
+        string? title = null,
+        CancellationToken cancellationToken = default)
     {
         var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
         var id = await Repository.InsertSessionAsync(
             new ChatSession
             {
-                Title = string.Empty,
+                Title = title ?? string.Empty,
                 CreatedAt = now,
-                UpdatedAt = now
+                UpdatedAt = now,
+                ExamId = examId
             },
             cancellationToken).ConfigureAwait(true);
 

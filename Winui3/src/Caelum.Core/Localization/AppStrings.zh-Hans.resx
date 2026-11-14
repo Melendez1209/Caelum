@@ -389,6 +389,24 @@
     <value>用不超过 20 个字总结下面这句话，只输出标题，不要输出其他内容：
 %1$s</value>
   </data>
+    <data name="llm_exam_context_lead" xml:space="preserve">
+    <value>以下是应用提供的学生考试数据，请据此回答，不要编造数据：</value>
+  </data>
+    <data name="llm_exam_count" xml:space="preserve">
+    <value>已记录考试数</value>
+  </data>
+    <data name="llm_exam_best_rank" xml:space="preserve">
+    <value>最好排名</value>
+  </data>
+    <data name="llm_exam_recent" xml:space="preserve">
+    <value>最近考试：</value>
+  </data>
+    <data name="llm_exam_current" xml:space="preserve">
+    <value>当前考试</value>
+  </data>
+    <data name="llm_exam_subjects" xml:space="preserve">
+    <value>各科成绩：</value>
+  </data>
     <data name="chat_sessions" xml:space="preserve">
     <value>会话</value>
   </data>

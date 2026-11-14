@@ -389,6 +389,24 @@
     <value>Summarize the following message in a short title of at most 20 characters. Output only the title, nothing else:
 %1$s</value>
   </data>
+    <data name="llm_exam_context_lead" xml:space="preserve">
+    <value>The following is the student's exam data provided by the app. Use it to answer, and do not invent data:</value>
+  </data>
+    <data name="llm_exam_count" xml:space="preserve">
+    <value>Exams recorded</value>
+  </data>
+    <data name="llm_exam_best_rank" xml:space="preserve">
+    <value>Best rank</value>
+  </data>
+    <data name="llm_exam_recent" xml:space="preserve">
+    <value>Recent exams:</value>
+  </data>
+    <data name="llm_exam_current" xml:space="preserve">
+    <value>Current exam</value>
+  </data>
+    <data name="llm_exam_subjects" xml:space="preserve">
+    <value>Subject marks:</value>
+  </data>
     <data name="chat_sessions" xml:space="preserve">
     <value>Chats</value>
   </data>

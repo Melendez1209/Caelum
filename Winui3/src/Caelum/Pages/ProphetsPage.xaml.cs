@@ -72,10 +72,33 @@ public sealed partial class ProphetsPage
     {
         base.OnNavigatedTo(e);
 
-        await ReloadAsync().ConfigureAwait(true);
+        // Opening the assistant from an exam detail page starts a session linked to that exam
+        if (e.Parameter is long examId && examId > 0)
+            await OpenExamSessionAsync(examId).ConfigureAwait(true);
+        else
+            await ReloadAsync().ConfigureAwait(true);
 
         // The settings page may have changed the provider while this page was away
         ApplyConfigurationState();
+    }
+
+    /// <summary>
+    ///     Creates a session linked to one exam, so the assistant can read its scores. A failure
+    ///     falls back to the current session rather than leaving a broken page.
+    /// </summary>
+    private async Task OpenExamSessionAsync(long examId)
+    {
+        try
+        {
+            var exam = await AppServices.Exams.Repository.GetExamAsync(examId).ConfigureAwait(true);
+
+            await AppServices.Chats.CreateAsync(examId, exam?.Name).ConfigureAwait(true);
+            await LoadMessagesAsync().ConfigureAwait(true);
+        }
+        catch (Exception)
+        {
+            await ReloadAsync().ConfigureAwait(true);
+        }
     }
 
     /// <inheritdoc />
@@ -173,6 +196,38 @@ public sealed partial class ProphetsPage
     }
 
     /// <summary>
+    ///     Builds the exam description the model reads: the student's overall figures, plus the
+    ///     full detail of the exam the current session is linked to.
+    /// </summary>
+    private async Task<string> BuildContextAsync()
+    {
+        var exams = AppServices.Exams.Exams.ToList();
+        var stats = AppServices.Exams.SubjectStats.ToList();
+
+        var context = ExamContextBuilder.BuildGlobal(
+            AppServices.Settings.Current,
+            exams,
+            stats,
+            _strings);
+
+        var session = AppServices.Chats.CurrentSession;
+
+        if (session is null || session.ExamId <= 0)
+            return context;
+
+        var exam = await AppServices.Exams.Repository.GetExamWithScoresAsync(session.ExamId).ConfigureAwait(true);
+
+        if (exam is null)
+            return context;
+
+        var examStats = await AppServices.Exams.Repository
+            .GetSubjectStatsAsync(session.ExamId)
+            .ConfigureAwait(true);
+
+        return context + "\n\n" + ExamContextBuilder.BuildExam(exam, exams, examStats, _strings);
+    }
+
+    /// <summary>
     ///     Shows the student's message at once, saves it, then replaces the pending bubble with the
     ///     model's answer as it arrives.
     /// </summary>
@@ -233,8 +288,11 @@ public sealed partial class ProphetsPage
 
         try
         {
+            var context = await BuildContextAsync().ConfigureAwait(true);
+
             var result = await AppServices.Llm.CompleteAsync(
                 history,
+                context,
                 progress,
                 cancellation.Token).ConfigureAwait(true);
 

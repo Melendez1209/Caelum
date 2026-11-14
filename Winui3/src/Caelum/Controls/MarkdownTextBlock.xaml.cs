@@ -1,5 +1,6 @@
 using System.Text;
 using Markdig;
+using Markdig.Extensions.Tables;
 using Markdig.Syntax;
 using Markdig.Syntax.Inlines;
 using MarkdigBlock = Markdig.Syntax.Block;
@@ -19,7 +20,10 @@ namespace Caelum.Controls;
 /// </summary>
 public sealed partial class MarkdownTextBlock
 {
-    private static readonly MarkdownPipeline Pipeline = new MarkdownPipelineBuilder().Build();
+    private static readonly MarkdownPipeline Pipeline = new MarkdownPipelineBuilder()
+        .UsePipeTables()
+        .UseGridTables()
+        .Build();
 
     private bool _renderQueued;
     private string _textToRender = string.Empty;
@@ -90,7 +94,7 @@ public sealed partial class MarkdownTextBlock
 
             case ParagraphBlock paragraph:
                 var textParagraph = new Paragraph();
-                AddInlines(textParagraph, paragraph.Inline);
+                AddInlines(textParagraph.Inlines, paragraph.Inline);
                 blocks.Add(textParagraph);
                 break;
 
@@ -107,7 +111,7 @@ public sealed partial class MarkdownTextBlock
                     foreach (var child in listItem)
                     {
                         if (child is ParagraphBlock itemBlock)
-                            AddInlines(itemParagraph, itemBlock.Inline);
+                            AddInlines(itemParagraph.Inlines, itemBlock.Inline);
                     }
 
                     blocks.Add(itemParagraph);
@@ -131,6 +135,10 @@ public sealed partial class MarkdownTextBlock
                     RenderBlock(child, blocks);
                 break;
 
+            case Table table:
+                RenderTable(table, blocks);
+                break;
+
             case ThematicBreakBlock:
                 var lineParagraph = new Paragraph();
                 var line = new InlineUIContainer
@@ -148,24 +156,105 @@ public sealed partial class MarkdownTextBlock
         }
     }
 
-    private static void AddInlines(Paragraph paragraph, ContainerInline? container)
+    /// <summary>
+    ///     Renders a Markdown table as a bordered grid. A RichTextBlock has no table element, so the
+    ///     grid is hosted in an inline container and participates in the surrounding text flow.
+    /// </summary>
+    private static void RenderTable(Table table, BlockCollection blocks)
+    {
+        var rows = new List<TableRow>();
+
+        foreach (var row in table)
+        {
+            if (row is TableRow tableRow)
+                rows.Add(tableRow);
+        }
+
+        if (rows.Count == 0 || table.ColumnDefinitions.Count == 0)
+            return;
+
+        var grid = new Grid { Margin = new Thickness(1) };
+
+        for (var column = 0; column < table.ColumnDefinitions.Count; column++)
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+        for (var rowIndex = 0; rowIndex < rows.Count; rowIndex++)
+        {
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+            var isHeader = rows[rowIndex].IsHeader;
+            var columnIndex = 0;
+
+            foreach (var cell in rows[rowIndex])
+            {
+                if (cell is not TableCell tableCell) continue;
+
+                var cellText = new TextBlock
+                {
+                    TextWrapping = TextWrapping.Wrap,
+                    Margin = new Thickness(10, 5, 10, 5)
+                };
+
+                if (isHeader)
+                    cellText.FontWeight = new FontWeight { Weight = 700 };
+
+                AddInlines(cellText.Inlines, CellContents(tableCell));
+
+                Grid.SetRow(cellText, rowIndex);
+                Grid.SetColumn(cellText, columnIndex);
+
+                grid.Children.Add(cellText);
+
+                columnIndex++;
+            }
+        }
+
+        var tableParagraph = new Paragraph { Margin = new Thickness(0, 4, 0, 4) };
+        tableParagraph.Inlines.Add(new InlineUIContainer
+        {
+            Child = new Border
+            {
+                BorderBrush = (Brush?)Application.Current.Resources["CardStrokeColorDefaultBrush"]
+                    ?? new SolidColorBrush(Microsoft.UI.Colors.Gray),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(6),
+                Child = grid
+            }
+        });
+
+        blocks.Add(tableParagraph);
+    }
+
+    /// <summary>The inline content of a cell, taken from its first paragraph.</summary>
+    private static ContainerInline? CellContents(TableCell cell)
+    {
+        foreach (var child in cell)
+        {
+            if (child is ParagraphBlock paragraph)
+                return paragraph.Inline;
+        }
+
+        return null;
+    }
+
+    private static void AddInlines(InlineCollection target, ContainerInline? container)
     {
         if (container is null) return;
 
         foreach (var inline in container)
-            AddInline(paragraph, inline);
+            AddInline(target, inline);
     }
 
-    private static void AddInline(Paragraph paragraph, MarkdigInline inline)
+    private static void AddInline(InlineCollection target, MarkdigInline inline)
     {
         switch (inline)
         {
             case LiteralInline literal:
-                paragraph.Inlines.Add(new Run { Text = literal.Content.ToString() });
+                target.Add(new Run { Text = literal.Content.ToString() });
                 break;
 
             case CodeInline code:
-                paragraph.Inlines.Add(new Run
+                target.Add(new Run
                 {
                     Text = code.Content,
                     FontFamily = new FontFamily("Consolas")
@@ -180,7 +269,7 @@ public sealed partial class MarkdownTextBlock
                 if (emphasis.DelimiterCount == 1)
                     run.FontStyle = FontStyle.Italic;
 
-                paragraph.Inlines.Add(run);
+                target.Add(run);
                 break;
 
             case LinkInline link:
@@ -199,16 +288,16 @@ public sealed partial class MarkdownTextBlock
                 }
 
                 hyperlink.Inlines.Add(new Run { Text = GetInnerText(link) });
-                paragraph.Inlines.Add(hyperlink);
+                target.Add(hyperlink);
                 break;
 
             case LineBreakInline:
-                paragraph.Inlines.Add(new LineBreak());
+                target.Add(new LineBreak());
                 break;
 
             case ContainerInline container:
                 foreach (var child in container)
-                    AddInline(paragraph, child);
+                    AddInline(target, child);
                 break;
         }
     }

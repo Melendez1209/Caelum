@@ -17,6 +17,9 @@ public sealed class ChatSession
     /// <summary>Time of the most recent message as epoch milliseconds, used to order the list.</summary>
     public long UpdatedAt { get; set; }
 
+    /// <summary>Id of the exam this session is analysing, or zero for a general conversation.</summary>
+    public long ExamId { get; set; }
+
     /// <summary>Navigation to the messages of this session.</summary>
     public List<ChatMessage> Messages { get; init; } = [];
 }

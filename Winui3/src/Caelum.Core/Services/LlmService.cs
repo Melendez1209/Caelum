@@ -51,10 +51,12 @@ public sealed class LlmService(
 
     /// <summary>
     ///     Sends the conversation and streams the reply through <paramref name="progress" />. The
-    ///     system prompt and the most recent turns are prepended by this method.
+    ///     system prompt, the optional exam context and the most recent turns are prepended by this
+    ///     method.
     /// </summary>
     public async Task<LlmResult> CompleteAsync(
         IReadOnlyList<LlmMessage> history,
+        string? context = null,
         IProgress<string>? progress = null,
         CancellationToken cancellationToken = default)
     {
@@ -79,6 +81,11 @@ public sealed class LlmService(
         {
             new("system", _strings.Get("llm_system_prompt"))
         };
+
+        // The exam data is supplied by the app, so it is labelled as data and kept out of the
+        // conversation history the student sees
+        if (!string.IsNullOrWhiteSpace(context))
+            messages.Add(new("system", _strings.Get("llm_exam_context_lead") + "\n\n" + context));
 
         messages.AddRange(history.TakeLast(MaxHistoryMessages));
 

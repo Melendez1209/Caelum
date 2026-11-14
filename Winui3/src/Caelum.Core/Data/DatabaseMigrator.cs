@@ -111,7 +111,7 @@ public static class DatabaseMigrator
 
         try
         {
-            var existing = await GetSettingsColumnsAsync(connection, cancellationToken).ConfigureAwait(false);
+            var existing = await GetTableColumnsAsync(connection, "settings", cancellationToken).ConfigureAwait(false);
 
             if (!existing.Contains("Grade", StringComparer.OrdinalIgnoreCase))
             {
@@ -182,9 +182,21 @@ public static class DatabaseMigrator
                     Id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
                     Title TEXT NOT NULL DEFAULT '',
                     CreatedAt INTEGER NOT NULL DEFAULT 0,
-                    UpdatedAt INTEGER NOT NULL DEFAULT 0
+                    UpdatedAt INTEGER NOT NULL DEFAULT 0,
+                    ExamId INTEGER NOT NULL DEFAULT 0
                 )",
                 cancellationToken).ConfigureAwait(false);
+
+            // A session table created before the exam link needs the column added in place
+            var sessionColumns = await GetTableColumnsAsync(connection, "chat_sessions", cancellationToken).ConfigureAwait(false);
+
+            if (!sessionColumns.Contains("ExamId", StringComparer.OrdinalIgnoreCase))
+            {
+                await ExecuteAsync(
+                    connection,
+                    "ALTER TABLE chat_sessions ADD COLUMN ExamId INTEGER NOT NULL DEFAULT 0",
+                    cancellationToken).ConfigureAwait(false);
+            }
 
             await ExecuteAsync(
                 connection,
@@ -209,14 +221,15 @@ public static class DatabaseMigrator
         }
     }
 
-    private static async Task<HashSet<string>> GetSettingsColumnsAsync(
+    private static async Task<HashSet<string>> GetTableColumnsAsync(
         DbConnection connection,
+        string tableName,
         CancellationToken cancellationToken)
     {
         var columns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         using var command = connection.CreateCommand();
-        command.CommandText = "PRAGMA table_info(settings)";
+        command.CommandText = $"PRAGMA table_info({tableName})";
 
         using var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
 

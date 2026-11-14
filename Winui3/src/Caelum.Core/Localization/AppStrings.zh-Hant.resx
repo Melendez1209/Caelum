@@ -389,6 +389,24 @@
     <value>用不超過 20 個字總結下面這句話，只輸出標題，不要輸出其他內容：
 %1$s</value>
   </data>
+    <data name="llm_exam_context_lead" xml:space="preserve">
+    <value>以下是應用提供的學生考試資料，請據此回答，不要編造資料：</value>
+  </data>
+    <data name="llm_exam_count" xml:space="preserve">
+    <value>已記錄考試數</value>
+  </data>
+    <data name="llm_exam_best_rank" xml:space="preserve">
+    <value>最好排名</value>
+  </data>
+    <data name="llm_exam_recent" xml:space="preserve">
+    <value>最近考試：</value>
+  </data>
+    <data name="llm_exam_current" xml:space="preserve">
+    <value>目前考試</value>
+  </data>
+    <data name="llm_exam_subjects" xml:space="preserve">
+    <value>各科成績：</value>
+  </data>
     <data name="chat_sessions" xml:space="preserve">
     <value>對話</value>
   </data>
