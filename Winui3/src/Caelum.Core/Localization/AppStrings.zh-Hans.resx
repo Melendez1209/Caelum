@@ -265,6 +265,15 @@
     <data name="score_distribution" xml:space="preserve">
     <value>分数分布</value>
   </data>
+    <data name="score_rate" xml:space="preserve">
+    <value>得分率</value>
+  </data>
+    <data name="this_exam" xml:space="preserve">
+    <value>本次考试</value>
+  </data>
+    <data name="history_average" xml:space="preserve">
+    <value>历史平均</value>
+  </data>
     <data name="comparison" xml:space="preserve">
     <value>对比</value>
   </data>

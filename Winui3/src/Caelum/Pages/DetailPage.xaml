@@ -103,6 +103,14 @@
                                     Grid.Row="0"
                                     x:Name="DistributionCaption"
                                     Style="{StaticResource BodyStrongTextBlockStyle}" />
+                                <lvc:PolarChart
+                                    Grid.Row="1"
+                                    x:Name="RadarChart"
+                                    Margin="0,8,0,0"
+                                    LegendPosition="Right"
+                                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                    Visibility="Collapsed" />
+
                                 <lvc:PieChart
                                     Grid.Row="1"
                                     x:Name="DistributionChart"

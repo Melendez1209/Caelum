@@ -262,6 +262,15 @@
     <data name="score_distribution" xml:space="preserve">
     <value>Score Distribution</value>
   </data>
+    <data name="score_rate" xml:space="preserve">
+    <value>Score rate</value>
+  </data>
+    <data name="this_exam" xml:space="preserve">
+    <value>This exam</value>
+  </data>
+    <data name="history_average" xml:space="preserve">
+    <value>Historical average</value>
+  </data>
     <data name="comparison" xml:space="preserve">
     <value>Comparison</value>
   </data>
