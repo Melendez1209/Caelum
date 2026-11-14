@@ -178,16 +178,17 @@
             </Button>
 
             <!--
-                A multi line rich text box. The preview key handler, attached with handled events
-                so the control cannot swallow the key, makes Enter send and Shift+Enter drop a new
-                line; see OnPromptPreviewKeyDown.
+                A multi line text box. The preview key handler makes Enter send and Shift+Enter drop
+                a new line; a RichEditBox handles the Enter key below the XAML layer, so it cannot be
+                intercepted reliably. See OnPromptPreviewKeyDown.
             -->
-            <RichEditBox
+            <TextBox
                 Grid.Column="1"
                 x:Name="PromptBox"
                 HorizontalAlignment="Stretch"
                 VerticalAlignment="Center"
                 AcceptsReturn="True"
+                TextWrapping="Wrap"
                 MaxHeight="150"
                 TextChanged="OnPromptTextChanged" />
 
@@ -198,7 +199,12 @@
                 MinWidth="0"
                 IsEnabled="False"
                 Click="OnSend">
+                <!--
+                    The glyph flips between Send and Stop while a reply is streaming, so the same
+                    button cancels the request.
+                -->
                 <FontIcon
+                    x:Name="SendButtonIcon"
                     FontFamily="Segoe Fluent Icons"
                     FontSize="16"
                     Glyph="&#xE724;" />

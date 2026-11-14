@@ -5,7 +5,6 @@ using Caelum.Core.Localization;
 using Caelum.Core.Services;
 using Caelum.Services;
 using Microsoft.UI.Input;
-using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -58,6 +57,12 @@ public sealed partial class ProphetsPage
             UIElement.PreviewKeyDownEvent,
             new KeyEventHandler(OnPromptPreviewKeyDown),
             handledEventsToo: true);
+
+        // A keyboard accelerator is the reliable way to take Enter away from the text box: it is
+        // invoked before the focused control sees the key, so the box never inserts the newline.
+        var enter = new KeyboardAccelerator { Key = VirtualKey.Enter };
+        enter.Invoked += OnEnterAcceleratorInvoked;
+        PromptBox.KeyboardAccelerators.Add(enter);
 
         ApplyConfigurationState();
     }
@@ -113,9 +118,32 @@ public sealed partial class ProphetsPage
         SendMessage();
     }
 
+    private void OnEnterAcceleratorInvoked(
+        KeyboardAccelerator sender,
+        KeyboardAcceleratorInvokedEventArgs args)
+    {
+        // Shift+Enter still drops a new line; the accelerator is left unhandled so the text box
+        // performs its normal insertion
+        if (IsShiftDown()) return;
+
+        args.Handled = true;
+
+        SendMessage();
+    }
+
     private void OnPromptTextChanged(object sender, RoutedEventArgs e) => UpdateSendState();
 
-    private void OnSend(object sender, RoutedEventArgs e) => SendMessage();
+    private void OnSend(object sender, RoutedEventArgs e)
+    {
+        // While a reply is streaming the button is the stop control
+        if (_replyCancellation is not null)
+        {
+            _replyCancellation.Cancel();
+            return;
+        }
+
+        SendMessage();
+    }
 
     private void OnOpenSettings(object sender, RoutedEventArgs e)
     {
@@ -156,9 +184,13 @@ public sealed partial class ProphetsPage
 
         if (session is null) return;
 
+        // A reply is already on its way; the send button is disabled, so this is only reachable
+        // through the Enter accelerator
+        if (_replyCancellation is not null) return;
+
         var sessionId = session.Id;
 
-        PromptBox.Document.GetText(TextGetOptions.None, out var text);
+        var text = PromptBox.Text;
 
         var trimmed = text.Trim();
 
@@ -168,7 +200,7 @@ public sealed partial class ProphetsPage
 
         AddMessage(new ChatBubble(userText, isUser: true));
 
-        PromptBox.Document.SetText(TextSetOptions.None, string.Empty);
+        PromptBox.Text = string.Empty;
 
         try
         {
@@ -194,9 +226,8 @@ public sealed partial class ProphetsPage
             pending.RaisePropertyChanged(nameof(pending.Text));
         });
 
-        await _replyCancellation?.CancelAsync()!;
-        _replyCancellation?.Dispose();
-        _replyCancellation = new CancellationTokenSource();
+        var cancellation = new CancellationTokenSource();
+        _replyCancellation = cancellation;
 
         UpdateSendState();
 
@@ -205,7 +236,7 @@ public sealed partial class ProphetsPage
             var result = await AppServices.Llm.CompleteAsync(
                 history,
                 progress,
-                _replyCancellation.Token).ConfigureAwait(true);
+                cancellation.Token).ConfigureAwait(true);
 
             pending.IsPending = false;
             pending.Text = result.Content;
@@ -248,9 +279,11 @@ public sealed partial class ProphetsPage
         }
         finally
         {
-            // OnNavigatedFrom may have already disposed the source when the page went away
-            _replyCancellation?.Dispose();
-            _replyCancellation = null;
+            cancellation.Dispose();
+
+            // A newer send may have replaced the field; only clear it when it still points here
+            if (ReferenceEquals(_replyCancellation, cancellation))
+                _replyCancellation = null;
 
             UpdateSendState();
         }
@@ -326,13 +359,18 @@ public sealed partial class ProphetsPage
 
     private void UpdateSendState()
     {
-        PromptBox.Document.GetText(TextGetOptions.None, out var text);
+        var text = PromptBox.Text;
+        var replying = _replyCancellation is not null;
 
         SendButton.IsEnabled =
-            !string.IsNullOrWhiteSpace(text) &&
-            AppServices.Llm.IsConfigured &&
-            AppServices.Chats.CurrentSession is not null &&
-            _replyCancellation is null;
+            replying ||
+            (!string.IsNullOrWhiteSpace(text) &&
+             AppServices.Llm.IsConfigured &&
+             AppServices.Chats.CurrentSession is not null);
+
+        // The same button cancels a streaming reply, so its glyph and tip follow the state
+        SendButtonIcon.Glyph = replying ? "\uE71A" : "\uE724";
+        ToolTipService.SetToolTip(SendButton, _strings.Get(replying ? "stop" : "send"));
     }
 
     private string LocalizeLlmError(LlmErrorKind kind) => kind switch

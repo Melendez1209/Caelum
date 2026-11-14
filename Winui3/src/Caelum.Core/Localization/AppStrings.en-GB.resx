@@ -301,6 +301,9 @@
     <data name="send" xml:space="preserve">
     <value>Send</value>
   </data>
+    <data name="stop" xml:space="preserve">
+    <value>Stop</value>
+  </data>
     <data name="upload_ai" xml:space="preserve">
     <value>Ask with an image</value>
   </data>

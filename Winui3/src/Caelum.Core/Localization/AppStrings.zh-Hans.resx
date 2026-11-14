@@ -301,6 +301,9 @@
     <data name="send" xml:space="preserve">
     <value>发送</value>
   </data>
+    <data name="stop" xml:space="preserve">
+    <value>停止</value>
+  </data>
     <data name="upload_ai" xml:space="preserve">
     <value>上传照片</value>
   </data>

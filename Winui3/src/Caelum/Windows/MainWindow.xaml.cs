@@ -24,6 +24,12 @@ public sealed partial class MainWindow
     private readonly StringLocalizer _strings = new();
     private readonly ThemeService _themeService;
 
+    /// <summary>The last session list rendered into the pane, so unchanged writes do not rebuild it.</summary>
+    private string? _builtSignature;
+
+    /// <summary>Set while the selection is changed from code, to keep the handler from re-entering.</summary>
+    private bool _suppressSelection;
+
     /// <summary>Creates the window, wires the shell up and opens the landing page.</summary>
     public MainWindow()
     {
@@ -116,11 +122,21 @@ public sealed partial class MainWindow
     /// </summary>
     private void BuildSessions()
     {
+        var sessions = AppServices.Chats.Sessions;
+
+        // The service raises Reloaded for every write, but the pane only shows ids and titles, so a
+        // rebuild is skipped until one of those actually changes
+        var signature = string.Join(
+            "|",
+            sessions.Select(session => $"{session.Id}:{session.Title}"));
+
+        if (signature == _builtSignature) return;
+
+        _builtSignature = signature;
+
         // Drop the previous session entries, keeping the new-chat entry that sits at the top
         while (ProphetsItem.MenuItems.Count > 1)
             ProphetsItem.MenuItems.RemoveAt(1);
-
-        var sessions = AppServices.Chats.Sessions;
 
         for (var index = sessions.Count - 1; index >= 0; index--)
         {
@@ -150,6 +166,40 @@ public sealed partial class MainWindow
 
             ProphetsItem.MenuItems.Insert(1, item);
         }
+
+        RestoreSessionSelection();
+    }
+
+    /// <summary>
+    ///     Puts the pane selection back on the entry for the current session after the entries have
+    ///     been rebuilt, because removing the selected item clears the highlight.
+    /// </summary>
+    private void RestoreSessionSelection()
+    {
+        var current = AppServices.Chats.CurrentSession;
+
+        if (current is null) return;
+
+        foreach (var item in ProphetsItem.MenuItems)
+        {
+            if (item is NavigationViewItem child &&
+                string.Equals(child.Tag as string, $"Session:{current.Id}", StringComparison.Ordinal))
+            {
+                SetSelectedItem(child);
+                return;
+            }
+        }
+    }
+
+    private void SetSelectedItem(NavigationViewItem item)
+    {
+        if (ReferenceEquals(Navigation.SelectedItem, item)) return;
+
+        _suppressSelection = true;
+
+        Navigation.SelectedItem = item;
+
+        _suppressSelection = false;
     }
 
     private async Task NewSessionAsync()
@@ -328,6 +378,8 @@ public sealed partial class MainWindow
         NavigationView sender,
         NavigationViewSelectionChangedEventArgs args)
     {
+        if (_suppressSelection) return;
+
         // NavigationView contributes a settings item of its own, below the footer items and shown
         // without being asked for, because IsSettingsVisible is true by default. The control builds
         // it, so it belongs to neither collection and carries no Tag, which leaves the switch below
@@ -371,6 +423,10 @@ public sealed partial class MainWindow
                         CultureInfo.InvariantCulture,
                         out var sessionId))
                 {
+                    // The pane sets the selection back to the current session after a rebuild, which
+                    // raises this event again; that is not a request to switch
+                    if (AppServices.Chats.CurrentSession?.Id == sessionId) return;
+
                     await SwitchSessionAsync(sessionId).ConfigureAwait(true);
                 }
 
@@ -388,14 +444,17 @@ public sealed partial class MainWindow
     {
         var page = MainFrame.Content;
 
-        Navigation.SelectedItem = page switch
+        var selected = page switch
         {
             HomePage => HomeItem,
             HistoryPage => HistoryItem,
             ProphetsPage => ResolveProphetsItem(),
             SettingsPage when Navigation.SettingsItem is NavigationViewItem settingsItem => settingsItem,
-            _ => Navigation.SelectedItem
+            _ => Navigation.SelectedItem as NavigationViewItem
         };
+
+        if (selected is not null)
+            SetSelectedItem(selected);
 
         ApplyBackButton();
     }
