@@ -15,10 +15,6 @@
     </Window.SystemBackdrop>
 
     <Grid>
-        <Grid.Resources>
-            <converters:ExamDateRangeConverter x:Key="DateRangeText" />
-        </Grid.Resources>
-
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
@@ -55,22 +51,18 @@
                     x:Name="TitleSearchBox"
                     QueryIcon="Find"
                     PlaceholderText="Search exams"
-                    TextMemberPath="Exam.Name"
+                    TextMemberPath="Title"
                     TextChanged="OnTitleSearchChanged"
                     SuggestionChosen="OnSearchSuggestionChosen"
                     QuerySubmitted="OnSearchQuerySubmitted">
                     <AutoSuggestBox.ItemTemplate>
                         <DataTemplate>
                             <StackPanel Spacing="2">
-                                <TextBlock>
-                                    <TextBlock.Text>
-                                        <Binding Path="Exam.Name" />
-                                    </TextBlock.Text>
-                                </TextBlock>
+                                <TextBlock Text="{Binding Title}" />
                                 <TextBlock
                                     Style="{StaticResource CaptionTextBlockStyle}"
                                     Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                    Text="{Binding Converter={StaticResource DateRangeText}}" />
+                                    Text="{Binding Subtitle}" />
                             </StackPanel>
                         </DataTemplate>
                     </AutoSuggestBox.ItemTemplate>

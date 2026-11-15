@@ -299,7 +299,10 @@
     <value>使用 Microsoft 帳戶登入</value>
   </data>
     <data name="search_hint" xml:space="preserve">
-    <value>搜尋考試</value>
+    <value>搜尋考試或對話</value>
+  </data>
+    <data name="search_session" xml:space="preserve">
+    <value>對話</value>
   </data>
     <data name="prophets" xml:space="preserve">
     <value>先知</value>

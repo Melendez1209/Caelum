@@ -302,7 +302,10 @@
     <value>Sign in with Microsoft</value>
   </data>
     <data name="search_hint" xml:space="preserve">
-    <value>Search exams</value>
+    <value>Search exams or chats</value>
+  </data>
+    <data name="search_session" xml:space="preserve">
+    <value>Chat</value>
   </data>
     <data name="prophets" xml:space="preserve">
     <value>Prophets</value>

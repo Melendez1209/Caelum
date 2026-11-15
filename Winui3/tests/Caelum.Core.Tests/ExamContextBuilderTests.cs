@@ -19,7 +19,9 @@ public sealed class ExamContextBuilderTests
     {
         var settings = new Settings
         {
+            Identity = StudentIdentity.Student,
             Grade = StudentGrade.SeniorFirst,
+            Region = "Shanghai",
             SelectedSubjects = "physics,chemistry"
         };
 
@@ -46,6 +48,8 @@ public sealed class ExamContextBuilderTests
         Assert.Contains("480", context);
         Assert.Contains("400", context);
         Assert.Contains("Best rank", context);
+        Assert.Contains("Student", context);
+        Assert.Contains("Shanghai", context);
     }
 
     [Fact]

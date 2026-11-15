@@ -299,7 +299,10 @@
     <value>使用 Microsoft 账户登录</value>
   </data>
     <data name="search_hint" xml:space="preserve">
-    <value>搜索考试</value>
+    <value>搜索考试或会话</value>
+  </data>
+    <data name="search_session" xml:space="preserve">
+    <value>会话</value>
   </data>
     <data name="prophets" xml:space="preserve">
     <value>先知</value>

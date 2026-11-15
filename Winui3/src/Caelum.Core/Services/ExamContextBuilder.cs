@@ -29,10 +29,18 @@ public static class ExamContextBuilder
 
         var builder = new StringBuilder();
 
+        var identity = IdentityName(settings.Identity, strings);
+
+        if (identity.Length > 0)
+            builder.AppendLine($"{strings.Get("identity")}: {identity}");
+
         var grade = GradeLabels.NameOf(strings, settings.Grade);
 
         if (grade.Length > 0)
             builder.AppendLine($"{strings.Get("grade")}: {grade}");
+
+        if (!string.IsNullOrWhiteSpace(settings.Region))
+            builder.AppendLine($"{strings.Get("region")}: {settings.Region}");
 
         var selected = SubjectCatalogue.ToSubjectKeySet(settings.SelectedSubjects);
 
@@ -133,6 +141,15 @@ public static class ExamContextBuilder
             .Select(exam => ExamScoring.RankOf(exam.Exam.Id, exams))
             .DefaultIfEmpty(0)
             .Min();
+
+    /// <summary>Display name of the stored identity, or empty when it has not been chosen.</summary>
+    private static string IdentityName(int identity, StringLocalizer strings) => identity switch
+    {
+        StudentIdentity.Student => strings.Get("student"),
+        StudentIdentity.Teacher => strings.Get("teacher"),
+        StudentIdentity.Parent => strings.Get("parent"),
+        _ => string.Empty
+    };
 
     private static string Format(float value) =>
         value.ToString("0.#", CultureInfo.InvariantCulture);

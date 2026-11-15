@@ -1,5 +1,6 @@
 using System.Globalization;
 using Caelum.Core.Data;
+using Caelum.Core.Domain;
 using Caelum.Core.Localization;
 using Caelum.Pages;
 using Caelum.Services;
@@ -277,9 +278,9 @@ public sealed partial class MainWindow
     }
 
     /// <summary>
-    ///     Fills the suggestion list with the exams whose name matches the typed text, the ones
-    ///     starting with it first. A blank query offers nothing, so the list stays shut until the
-    ///     student types.
+    ///     Fills the suggestion list with the exams and assistant sessions whose title matches the
+    ///     typed text, the ones starting with it first. A blank query offers nothing, so the list
+    ///     stays shut until the student types.
     /// </summary>
     private void UpdateSearchSuggestions(AutoSuggestBox sender)
     {
@@ -291,40 +292,87 @@ public sealed partial class MainWindow
             return;
         }
 
-        sender.ItemsSource = AppServices.Exams.Exams
-            .Where(exam => exam.Exam.Name.Contains(query, StringComparison.CurrentCultureIgnoreCase))
-            .OrderByDescending(exam => exam.Exam.Name.StartsWith(query, StringComparison.CurrentCultureIgnoreCase))
-            .ThenBy(exam => exam.Exam.Name, StringComparer.CurrentCultureIgnoreCase)
+        var entries = new List<SearchEntry>();
+
+        entries.AddRange(
+            AppServices.Exams.Exams
+                .Where(exam => exam.Exam.Name.Contains(query, StringComparison.CurrentCultureIgnoreCase))
+                .Select(exam => new SearchEntry(
+                    exam.Exam.Name,
+                    ExamDates.FormatDateRange(exam.Exam.StartDate, exam.Exam.EndDate),
+                    exam.Exam.Id,
+                    IsSession: false)));
+
+        entries.AddRange(
+            AppServices.Chats.Sessions
+                .Where(session => SessionTitle(session).Contains(query, StringComparison.CurrentCultureIgnoreCase))
+                .Select(session => new SearchEntry(
+                    SessionTitle(session),
+                    $"{_strings.Get("search_session")} · {FormatSessionTime(session.UpdatedAt)}",
+                    session.Id,
+                    IsSession: true)));
+
+        sender.ItemsSource = entries
+            .OrderByDescending(entry => entry.Title.StartsWith(query, StringComparison.CurrentCultureIgnoreCase))
+            .ThenBy(entry => entry.Title, StringComparer.CurrentCultureIgnoreCase)
             .Take(8)
             .ToList();
     }
 
     private void OnSearchSuggestionChosen(AutoSuggestBox sender, AutoSuggestBoxSuggestionChosenEventArgs args)
     {
-        if (args.SelectedItem is not ExamWithTotal exam) return;
+        if (args.SelectedItem is not SearchEntry entry) return;
 
-        OpenExam(exam);
+        OpenEntry(entry);
     }
 
     private void OnSearchQuerySubmitted(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs args)
     {
-        // Enter opens an exam the student actually highlighted in the list; a plain Enter on
+        // Enter opens the row the student actually highlighted in the list; a plain Enter on
         // typed text leaves the history filter alone
-        if (args.ChosenSuggestion is not ExamWithTotal exam) return;
+        if (args.ChosenSuggestion is not SearchEntry entry) return;
 
-        OpenExam(exam);
+        OpenEntry(entry);
     }
 
     /// <summary>
-    ///     Opens the chosen exam and leaves the box showing its name, so the query and the list
-    ///     behind the detail page agree.
+    ///     Opens the chosen row and leaves the box showing its title, so the query and the page
+    ///     behind it agree.
     /// </summary>
-    private void OpenExam(ExamWithTotal exam)
+    private void OpenEntry(SearchEntry entry)
     {
-        AppServices.Search.SetQuery(exam.Exam.Name);
-        TitleSearchBox.Text = exam.Exam.Name;
+        AppServices.Search.SetQuery(entry.Title);
+        TitleSearchBox.Text = entry.Title;
 
-        MainFrame.Navigate(typeof(DetailPage), exam.Exam.Id);
+        if (entry.IsSession)
+        {
+            OpenSession(entry.Id);
+            return;
+        }
+
+        MainFrame.Navigate(typeof(DetailPage), entry.Id);
+    }
+
+    private async void OpenSession(long sessionId)
+    {
+        await AppServices.Chats.SwitchAsync(sessionId).ConfigureAwait(true);
+
+        if (MainFrame.Content is ProphetsPage page)
+            await page.ReloadAsync().ConfigureAwait(true);
+        else
+            MainFrame.Navigate(typeof(ProphetsPage));
+    }
+
+    private string SessionTitle(ChatSession session) =>
+        string.IsNullOrWhiteSpace(session.Title) ? _strings.Get("chat_title_default") : session.Title;
+
+    private string FormatSessionTime(long updatedAt)
+    {
+        if (updatedAt <= 0) return string.Empty;
+
+        return DateTimeOffset.FromUnixTimeMilliseconds(updatedAt)
+            .LocalDateTime
+            .ToString("yyyy-MM-dd HH:mm", CultureInfo.CurrentCulture);
     }
 
     private void OnThemeChanged(object? sender, EventArgs e)
