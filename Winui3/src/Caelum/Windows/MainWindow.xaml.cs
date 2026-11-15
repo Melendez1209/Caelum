@@ -152,6 +152,14 @@ public sealed partial class MainWindow
                 Icon = new SymbolIcon(Symbol.Message)
             };
 
+            var rename = new MenuFlyoutItem
+            {
+                Text = _strings.Get("chat_rename_session"),
+                Tag = session.Id
+            };
+
+            rename.Click += OnRenameSessionClick;
+
             var delete = new MenuFlyoutItem
             {
                 Text = _strings.Get("chat_delete_session"),
@@ -161,6 +169,7 @@ public sealed partial class MainWindow
             delete.Click += OnDeleteSessionClick;
 
             var flyout = new MenuFlyout();
+            flyout.Items.Add(rename);
             flyout.Items.Add(delete);
 
             item.ContextFlyout = flyout;
@@ -241,6 +250,38 @@ public sealed partial class MainWindow
 
         if (MainFrame.Content is ProphetsPage page)
             await page.ReloadAsync().ConfigureAwait(true);
+    }
+
+    private async void OnRenameSessionClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuFlyoutItem item || item.Tag is not long sessionId) return;
+
+        var session = AppServices.Chats.Sessions.FirstOrDefault(candidate => candidate.Id == sessionId);
+
+        var currentTitle = session is null || string.IsNullOrWhiteSpace(session.Title)
+            ? _strings.Get("chat_title_default")
+            : session.Title;
+
+        var input = new TextBox
+        {
+            Text = currentTitle,
+            PlaceholderText = _strings.Get("chat_title_default"),
+            HorizontalAlignment = HorizontalAlignment.Stretch
+        };
+
+        var dialog = new ContentDialog
+        {
+            Title = _strings.Get("chat_rename_session"),
+            Content = input,
+            PrimaryButtonText = _strings.Get("chat_rename_confirm"),
+            CloseButtonText = _strings.Get("cancel"),
+            XamlRoot = MainFrame.XamlRoot
+        };
+
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
+
+        // An empty name falls back to the default title the pane shows
+        await AppServices.Chats.RenameAsync(sessionId, input.Text.Trim()).ConfigureAwait(true);
     }
 
     /// <summary>

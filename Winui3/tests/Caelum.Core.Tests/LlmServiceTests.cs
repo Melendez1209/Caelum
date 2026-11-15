@@ -101,6 +101,33 @@ public sealed class LlmServiceTests
     }
 
     [Fact]
+    public async Task CompleteAsyncSkipsTheSystemPromptAfterTheFirstRequest()
+    {
+        var settings = new Settings
+        {
+            LlmProviderValue = (int)LlmProviderOption.LongCat,
+            LlmBaseUrl = "https://api.longcat.chat/openai",
+            LlmModel = "LongCat-2.5"
+        };
+
+        var secrets = new InMemorySecretStore();
+        secrets.Write(LlmService.ApiKeySlot, "key");
+
+        var handler = new FakeHttpMessageHandler(_ => JsonResponseFactory.Completion("ok"));
+
+        using var client = new OpenAiCompatibleLlmClient(handler);
+
+        var service = new LlmService(CreateSettingsService(settings), secrets, client);
+
+        var result = await service.CompleteAsync(
+            [new LlmMessage("user", "Hi")],
+            includeSystemPrompt: false);
+
+        Assert.True(result.IsSuccess);
+        Assert.DoesNotContain("\"role\":\"system\"", handler.LastBody);
+    }
+
+    [Fact]
     public async Task GenerateTitleAsyncSendsTheFirstMessageAndReturnsTheTitle()
     {
         var settings = new Settings

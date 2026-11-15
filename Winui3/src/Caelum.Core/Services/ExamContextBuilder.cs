@@ -59,6 +59,24 @@ public static class ExamContextBuilder
 
         builder.AppendLine($"{strings.Get("llm_exam_best_rank")}: {BestRank(exams)}");
 
+        // Per-subject averages, in the catalogue's display order, so the model can compare subjects
+        var statsBySubject = stats.ToDictionary(stat => stat.SubjectKey, StringComparer.Ordinal);
+
+        if (statsBySubject.Count > 0)
+        {
+            builder.AppendLine(strings.Get("llm_exam_subject_averages"));
+
+            foreach (var key in SubjectCatalogue.ExamSubjectKeys)
+            {
+                if (!statsBySubject.TryGetValue(key, out var stat)) continue;
+
+                builder.AppendLine(
+                    $"- {SubjectLabels.NameOf(strings, key)}: " +
+                    $"{Format(stat.AvgMark)}/{Format(stat.AvgFullMark)} " +
+                    $"({Format(ExamScoring.Percentage(stat.AvgMark, stat.AvgFullMark))}%)");
+            }
+        }
+
         var recent = exams
             .OrderByDescending(exam => exam.Exam.StartDate)
             .Take(MaxRecentExams)

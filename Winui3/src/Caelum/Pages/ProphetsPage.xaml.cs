@@ -37,7 +37,7 @@ public sealed partial class ProphetsPage
     {
         InitializeComponent();
 
-        TitleText.Text = _strings.Get("prophets");
+        ApplyTitle();
         PromptBox.PlaceholderText = _strings.Get("ask_something");
 
         // The templates live in XAML so the bubbles can use theme resources; the selector picks
@@ -64,6 +64,9 @@ public sealed partial class ProphetsPage
         enter.Invoked += OnEnterAcceleratorInvoked;
         PromptBox.KeyboardAccelerators.Add(enter);
 
+        // The title follows the session name, which changes when the student renames or switches
+        AppServices.Chats.Reloaded += OnChatsReloaded;
+
         ApplyConfigurationState();
     }
 
@@ -80,6 +83,8 @@ public sealed partial class ProphetsPage
 
         // The settings page may have changed the provider while this page was away
         ApplyConfigurationState();
+
+        ApplyTitle();
     }
 
     /// <summary>
@@ -104,11 +109,30 @@ public sealed partial class ProphetsPage
     /// <inheritdoc />
     protected override void OnNavigatedFrom(NavigationEventArgs e)
     {
+        AppServices.Chats.Reloaded -= OnChatsReloaded;
+
         _replyCancellation?.Cancel();
         _replyCancellation?.Dispose();
         _replyCancellation = null;
 
         base.OnNavigatedFrom(e);
+    }
+
+    private void OnChatsReloaded(object? sender, EventArgs e)
+    {
+        ApplyTitle();
+    }
+
+    /// <summary>Shows the page title followed by the session name, e.g.「先知 - 期中考试」.</summary>
+    private void ApplyTitle()
+    {
+        var session = AppServices.Chats.CurrentSession;
+
+        var name = session is null || string.IsNullOrWhiteSpace(session.Title)
+            ? _strings.Get("chat_title_default")
+            : session.Title;
+
+        TitleText.Text = $"{_strings.Get("prophets")} - {name}";
     }
 
     /// <summary>
@@ -196,8 +220,10 @@ public sealed partial class ProphetsPage
     }
 
     /// <summary>
-    ///     Builds the exam description the model reads: the student's overall figures, plus the
-    ///     full detail of the exam the current session is linked to.
+    ///     Builds the exam description the model reads: the student's overall figures and per-subject
+    ///     averages, plus the full detail of the exam the current session is linked to. A session
+    ///     without a linked exam falls back to the most recent one, so the assistant always has
+    ///     per-subject marks available.
     /// </summary>
     private async Task<string> BuildContextAsync()
     {
@@ -210,18 +236,21 @@ public sealed partial class ProphetsPage
             stats,
             _strings);
 
-        var session = AppServices.Chats.CurrentSession;
+        var examId = AppServices.Chats.CurrentSession?.ExamId ?? 0;
 
-        if (session is null || session.ExamId <= 0)
+        if (examId <= 0 && exams.Count > 0)
+            examId = exams.OrderByDescending(exam => exam.Exam.StartDate).First().Exam.Id;
+
+        if (examId <= 0)
             return context;
 
-        var exam = await AppServices.Exams.Repository.GetExamWithScoresAsync(session.ExamId).ConfigureAwait(true);
+        var exam = await AppServices.Exams.Repository.GetExamWithScoresAsync(examId).ConfigureAwait(true);
 
         if (exam is null)
             return context;
 
         var examStats = await AppServices.Exams.Repository
-            .GetSubjectStatsAsync(session.ExamId)
+            .GetSubjectStatsAsync(examId)
             .ConfigureAwait(true);
 
         return context + "\n\n" + ExamContextBuilder.BuildExam(exam, exams, examStats, _strings);
@@ -252,6 +281,10 @@ public sealed partial class ProphetsPage
         if (string.IsNullOrEmpty(trimmed)) return;
 
         var userText = NormalizeLineEndings(trimmed);
+
+        // The role prompt is only injected on the session's first request; later turns rely on the
+        // conversation history
+        var isFirstRequest = _messages.Count == 0;
 
         AddMessage(new ChatBubble(userText, isUser: true));
 
@@ -288,13 +321,18 @@ public sealed partial class ProphetsPage
 
         try
         {
-            var context = await BuildContextAsync().ConfigureAwait(true);
+            // The exam data is only injected on the session's first request; later turns rely on
+            // the conversation history
+            var context = isFirstRequest
+                ? await BuildContextAsync().ConfigureAwait(true)
+                : null;
 
             var result = await AppServices.Llm.CompleteAsync(
                 history,
                 context,
                 progress,
-                cancellation.Token).ConfigureAwait(true);
+                cancellation.Token,
+                includeSystemPrompt: isFirstRequest).ConfigureAwait(true);
 
             pending.IsPending = false;
             pending.Text = result.Content;

@@ -51,14 +51,15 @@ public sealed class LlmService(
 
     /// <summary>
     ///     Sends the conversation and streams the reply through <paramref name="progress" />. The
-    ///     system prompt, the optional exam context and the most recent turns are prepended by this
-    ///     method.
+    ///     optional system prompt, the optional exam context and the most recent turns are prepended
+    ///     by this method.
     /// </summary>
     public async Task<LlmResult> CompleteAsync(
         IReadOnlyList<LlmMessage> history,
         string? context = null,
         IProgress<string>? progress = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        bool includeSystemPrompt = true)
     {
         var current = settings.Current;
         var option = (LlmProviderOption)current.LlmProviderValue;
@@ -77,10 +78,12 @@ public sealed class LlmService(
         if (string.IsNullOrWhiteSpace(baseUrl) || string.IsNullOrWhiteSpace(model))
             return LlmResult.Failure(LlmErrorKind.NotConfigured);
 
-        var messages = new List<LlmMessage>
-        {
-            new("system", _strings.Get("llm_system_prompt"))
-        };
+        var messages = new List<LlmMessage>();
+
+        // The role is only stated on the session's first request; the conversation that follows
+        // carries it forward
+        if (includeSystemPrompt)
+            messages.Add(new("system", _strings.Get("llm_system_prompt")));
 
         // The exam data is supplied by the app, so it is labelled as data and kept out of the
         // conversation history the student sees

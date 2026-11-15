@@ -124,7 +124,8 @@
         <TextBlock
             Grid.Row="0"
             x:Name="TitleText"
-            Style="{StaticResource TitleTextBlockStyle}" />
+            Style="{StaticResource TitleTextBlockStyle}"
+            TextTrimming="CharacterEllipsis" />
 
         <!--
             Shown when no model provider has been configured, so the student is told what to do

@@ -389,7 +389,7 @@
     <value>Open settings</value>
   </data>
     <data name="llm_system_prompt" xml:space="preserve">
-    <value>You are Caelum's study assistant. Help the student understand their exam performance, analyze strengths and weaknesses, and suggest practical ways to improve. Be concise, encouraging and honest, and answer in the language the student uses.</value>
+    <value>You are Caelum's study assistant, called 先知 (Prophet) in this app. Help the student understand their exam performance, analyze strengths and weaknesses, and suggest practical ways to improve. Address the user appropriately for their identity (student, teacher or parent), be encouraging and honest, and answer in the language the user uses.</value>
   </data>
     <data name="llm_title_prompt" xml:space="preserve">
     <value>Summarize the following message in a short title of at most 20 characters. Output only the title, nothing else:
@@ -413,6 +413,9 @@
     <data name="llm_exam_subjects" xml:space="preserve">
     <value>Subject marks:</value>
   </data>
+    <data name="llm_exam_subject_averages" xml:space="preserve">
+    <value>Subject averages:</value>
+  </data>
     <data name="chat_sessions" xml:space="preserve">
     <value>Chats</value>
   </data>
@@ -430,6 +433,12 @@
   </data>
     <data name="chat_delete_session" xml:space="preserve">
     <value>Delete chat</value>
+  </data>
+    <data name="chat_rename_session" xml:space="preserve">
+    <value>Rename</value>
+  </data>
+    <data name="chat_rename_confirm" xml:space="preserve">
+    <value>Save</value>
   </data>
     <data name="average" xml:space="preserve">
     <value>Average</value>

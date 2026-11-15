@@ -41,7 +41,13 @@ public sealed class ExamContextBuilderTests
             }
         };
 
-        var context = ExamContextBuilder.BuildGlobal(settings, exams, [], Strings);
+        var stats = new List<SubjectStat>
+        {
+            new() { SubjectKey = "chinese", AvgMark = 110f, AvgFullMark = 150f, ExamCount = 2 },
+            new() { SubjectKey = "maths", AvgMark = 90f, AvgFullMark = 150f, ExamCount = 2 }
+        };
+
+        var context = ExamContextBuilder.BuildGlobal(settings, exams, stats, Strings);
 
         Assert.Contains("First", context);
         Assert.Contains("Second", context);
@@ -50,6 +56,9 @@ public sealed class ExamContextBuilderTests
         Assert.Contains("Best rank", context);
         Assert.Contains("Student", context);
         Assert.Contains("Shanghai", context);
+        Assert.Contains("Subject averages", context);
+        Assert.Contains("110", context);
+        Assert.Contains("90", context);
     }
 
     [Fact]
