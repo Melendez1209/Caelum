@@ -409,12 +409,38 @@ public sealed partial class GuideWindow
     }
 
     /// <summary>
-    ///     Skipping is the same gesture as closing the window: the wizard has nothing worth keeping
-    ///     once the student dismisses it, and both routes end up in <see cref="OnClosed" />.
+    ///     Skipping clears the first login flag and hides the wizard. The caller closes the hidden
+    ///     window once the shell is stable, so skipping and finishing share one dismissal path.
     /// </summary>
-    private void OnSkip(object sender, RoutedEventArgs e)
+    private async void OnSkip(object sender, RoutedEventArgs e)
     {
-        Close();
+        try
+        {
+            await AppServices.Settings.CompleteOnboardingAsync();
+        }
+        catch (Exception)
+        {
+            // The wizard is going away either way
+        }
+
+        _completed = true;
+
+        HideAndDismiss();
+    }
+
+    /// <summary>
+    ///     Hides the wizard and releases <see cref="Dismissed" /> without destroying the window. The
+    ///     shell opens while the wizard is only hidden, and the caller closes it once the shell has
+    ///     settled, because destroying this window while the shell is activating fails fast in
+    ///     <c>InputNonClientPointerSourceWinRT.PostDestroy</c> on Windows App SDK 2.6.5.
+    /// </summary>
+    private void HideAndDismiss()
+    {
+        _themeService.ThemeChanged -= OnThemeChanged;
+
+        AppWindow.Hide();
+
+        _dismissed.TrySetResult();
     }
 
     private async Task FinishAsync()
@@ -434,7 +460,8 @@ public sealed partial class GuideWindow
             await settings.CompleteOnboardingAsync();
 
             _completed = true;
-            Close();
+
+            HideAndDismiss();
         }
         finally
         {

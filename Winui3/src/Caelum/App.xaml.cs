@@ -38,9 +38,9 @@ public partial class App
     }
 
     /// <summary>
-    ///     Shows the onboarding wizard and waits for it to go away, whether the student finished it or
-    ///     dismissed it. Either way the wizard has cleared the first login flag, so the shell opens
-    ///     straight into the dashboard.
+    ///     Shows the onboarding wizard and waits for it to be dismissed, whether the student finished
+    ///     it or skipped it. The wizard only hides itself when dismissed, so the shell opens while it
+    ///     is still alive and the window is closed once the shell has settled.
     /// </summary>
     private async Task RunOnboardingAsync()
     {
@@ -53,9 +53,16 @@ public partial class App
         // shell must not start until that write has landed
         await _guide.Dismissed;
 
-        _guide = null;
-
         OpenShell();
+
+        // The wizard is hidden rather than destroyed when the shell opens. Tearing down its window
+        // while the shell is activating fails fast in InputNonClientPointerSourceWinRT.PostDestroy
+        // on Windows App SDK 2.6.5, so the close is delayed until the shell has settled.
+        await Task.Delay(2000);
+
+        _guide?.Close();
+
+        _guide = null;
     }
 
     /// <summary>Creates and shows the main window.</summary>
