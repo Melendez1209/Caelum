@@ -50,6 +50,12 @@ public sealed class SettingsService(ISettingsRepository repository)
         return UpdateAsync(settings => settings.Identity = identity, cancellationToken);
     }
 
+    /// <summary>Records the school year the student is seated in.</summary>
+    public Task SetGradeAsync(int grade, CancellationToken cancellationToken = default)
+    {
+        return UpdateAsync(settings => settings.Grade = grade, cancellationToken);
+    }
+
     /// <summary>Stores the free text region the student typed during onboarding.</summary>
     public Task SetRegionAsync(string? region, CancellationToken cancellationToken = default)
     {
@@ -83,6 +89,31 @@ public sealed class SettingsService(ISettingsRepository repository)
         HistoryViewMode mode,
         CancellationToken cancellationToken = default) =>
         UpdateAsync(settings => settings.HistoryViewMode = mode, cancellationToken);
+
+    /// <summary>Stores the assistant provider, base URL and model in one write.</summary>
+    public Task SetLlmConfigAsync(
+        int providerValue,
+        string? baseUrl,
+        string? model,
+        CancellationToken cancellationToken = default)
+    {
+        return UpdateAsync(
+            settings =>
+            {
+                settings.LlmProviderValue = providerValue;
+                settings.LlmBaseUrl = baseUrl ?? string.Empty;
+                settings.LlmModel = model ?? string.Empty;
+            },
+            cancellationToken);
+    }
+
+    /// <summary>Stores which assistant session the student left open.</summary>
+    public Task SetCurrentChatSessionAsync(
+        long sessionId,
+        CancellationToken cancellationToken = default)
+    {
+        return UpdateAsync(settings => settings.CurrentChatSessionId = sessionId, cancellationToken);
+    }
 
     /// <summary>Marks onboarding as finished, which is what lets the shell open the main window.</summary>
     public Task CompleteOnboardingAsync(CancellationToken cancellationToken = default)

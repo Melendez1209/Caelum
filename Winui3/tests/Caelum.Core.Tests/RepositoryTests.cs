@@ -333,9 +333,13 @@ public sealed class SettingsRepositoryTests : IAsyncLifetime
         Assert.Equal(AppThemeMode.FollowSystem, settings.AppThemeValue);
         Assert.Equal("", settings.SelectedLanguage);
         Assert.Equal(StudentIdentity.None, settings.Identity);
+        Assert.Equal(StudentGrade.None, settings.Grade);
         Assert.Equal(TrendMetric.Marks, settings.TrendMetric);
         Assert.Equal(TrendMetric.Marks, settings.SubjectMetric);
         Assert.Equal(HistoryViewMode.Standard, settings.HistoryViewMode);
+        Assert.Equal((int)LlmProviderOption.None, settings.LlmProviderValue);
+        Assert.Equal(string.Empty, settings.LlmBaseUrl);
+        Assert.Equal(string.Empty, settings.LlmModel);
     }
 
     [Fact]
@@ -368,11 +372,15 @@ public sealed class SettingsRepositoryTests : IAsyncLifetime
             SelectedLanguage = "zh-Hans",
             IsFirstLogin = false,
             Identity = StudentIdentity.Student,
+            Grade = StudentGrade.SeniorFirst,
             Region = "Shanghai",
             SelectedSubjects = "physics,chemistry",
             TrendMetric = TrendMetric.Rate,
             SubjectMetric = TrendMetric.Rate,
-            HistoryViewMode = HistoryViewMode.Compact
+            HistoryViewMode = HistoryViewMode.Compact,
+            LlmProviderValue = (int)LlmProviderOption.LongCat,
+            LlmBaseUrl = "https://api.longcat.chat/openai",
+            LlmModel = "LongCat-2.5"
         });
 
         var stored = await _repository.GetAsync();
@@ -383,11 +391,15 @@ public sealed class SettingsRepositoryTests : IAsyncLifetime
         Assert.Equal("zh-Hans", stored.SelectedLanguage);
         Assert.False(stored.IsFirstLogin);
         Assert.Equal(StudentIdentity.Student, stored.Identity);
+        Assert.Equal(StudentGrade.SeniorFirst, stored.Grade);
         Assert.Equal("Shanghai", stored.Region);
         Assert.Equal("physics,chemistry", stored.SelectedSubjects);
         Assert.Equal(TrendMetric.Rate, stored.TrendMetric);
         Assert.Equal(TrendMetric.Rate, stored.SubjectMetric);
         Assert.Equal(HistoryViewMode.Compact, stored.HistoryViewMode);
+        Assert.Equal((int)LlmProviderOption.LongCat, stored.LlmProviderValue);
+        Assert.Equal("https://api.longcat.chat/openai", stored.LlmBaseUrl);
+        Assert.Equal("LongCat-2.5", stored.LlmModel);
         Assert.Single(await _context.Settings.ToListAsync());
     }
 

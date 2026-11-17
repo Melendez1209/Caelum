@@ -25,6 +25,9 @@ public sealed class Settings
     /// <summary>One of the <see cref="StudentIdentity" /> constants.</summary>
     public int Identity { get; set; } = StudentIdentity.None;
 
+    /// <summary>One of the <see cref="StudentGrade" /> constants.</summary>
+    public int Grade { get; set; } = StudentGrade.None;
+
     /// <summary>Free text region the student typed during onboarding.</summary>
     public string Region { get; set; } = string.Empty;
 
@@ -48,4 +51,16 @@ public sealed class Settings
     /// adds the date and the score detail, and compact shows only a name and a mark.
     /// </summary>
     public HistoryViewMode HistoryViewMode { get; set; } = HistoryViewMode.Standard;
+
+    /// <summary>One of the <see cref="LlmProviderOption" /> constants.</summary>
+    public int LlmProviderValue { get; set; } = (int)LlmProviderOption.None;
+
+    /// <summary>OpenAI compatible base URL the assistant talks to.</summary>
+    public string LlmBaseUrl { get; set; } = string.Empty;
+
+    /// <summary>Model name sent with every assistant request.</summary>
+    public string LlmModel { get; set; } = string.Empty;
+
+    /// <summary>Id of the assistant session to reopen, or zero when none is stored.</summary>
+    public long CurrentChatSessionId { get; set; }
 }

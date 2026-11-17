@@ -17,7 +17,7 @@ namespace Caelum.Windows;
 /// </summary>
 public sealed partial class GuideWindow
 {
-    private const int StepCount = 3;
+    private const int StepCount = 4;
 
     /// <summary>The frame the wizard opens at: portrait, and narrower than it is tall.</summary>
     private const int DefaultWidth = 460;
@@ -53,6 +53,7 @@ public sealed partial class GuideWindow
     private bool _completed;
     private bool _finishing;
     private bool _locating;
+    private int _grade;
     private int _identity;
     private string _region;
     private int _step;
@@ -73,6 +74,7 @@ public sealed partial class GuideWindow
         _themeService.ThemeChanged += OnThemeChanged;
 
         _identity = AppServices.Settings.Current.Identity;
+        _grade = AppServices.Settings.Current.Grade;
         _region = AppServices.Settings.Current.Region;
 
         foreach (var key in AppServices.Settings.SelectedSubjects) _selectedSubjects.Add(key);
@@ -82,6 +84,7 @@ public sealed partial class GuideWindow
         ApplyCaptions();
         BuildIdentityStep();
         BuildRegionStep();
+        BuildGradeStep();
         BuildSubjectStep();
         BuildDots();
         ConfigurePresenter();
@@ -161,6 +164,7 @@ public sealed partial class GuideWindow
 
         IdentityHeading.Text = _strings.Get("onboarding_identity");
         RegionHeading.Text = _strings.Get("onboarding_region");
+        GradeHeading.Text = _strings.Get("onboarding_grade");
         SubjectHeading.Text = _strings.Get("onboarding_subjects");
         SloganText.Text = _strings.Get("slogan");
 
@@ -194,6 +198,21 @@ public sealed partial class GuideWindow
         RegionBox.TextChanged += (_, _) =>
         {
             _region = RegionBox.Text ?? string.Empty;
+            UpdatePrimaryButton();
+        };
+    }
+
+    private void BuildGradeStep()
+    {
+        GradeOptions.ItemsSource = StudentGrade.All
+            .Select(grade => GradeLabels.NameOf(_strings, grade))
+            .ToList();
+
+        GradeOptions.SelectedIndex = IndexOfGrade(_grade);
+        GradeOptions.SelectionChanged += (_, _) =>
+        {
+            if (GradeOptions.SelectedIndex >= 0) _grade = GradeForIndex(GradeOptions.SelectedIndex);
+
             UpdatePrimaryButton();
         };
     }
@@ -259,6 +278,7 @@ public sealed partial class GuideWindow
 
         IdentityPanel.Visibility = _step == 0 ? Visibility.Visible : Visibility.Collapsed;
         RegionPanel.Visibility = _step == 1 ? Visibility.Visible : Visibility.Collapsed;
+        GradePanel.Visibility = _step == 2 ? Visibility.Visible : Visibility.Collapsed;
         SubjectPanel.Visibility = isLastStep ? Visibility.Visible : Visibility.Collapsed;
 
         // There is nowhere to go back to from the first step, and the wizard has a skip button, which
@@ -283,6 +303,7 @@ public sealed partial class GuideWindow
         {
             0 => IdentityOptions.SelectedIndex >= 0,
             1 => !string.IsNullOrWhiteSpace(_region),
+            2 => GradeOptions.SelectedIndex >= 0,
             _ => _selectedSubjects.Count > 0
         };
     }
@@ -388,12 +409,38 @@ public sealed partial class GuideWindow
     }
 
     /// <summary>
-    ///     Skipping is the same gesture as closing the window: the wizard has nothing worth keeping
-    ///     once the student dismisses it, and both routes end up in <see cref="OnClosed" />.
+    ///     Skipping clears the first login flag and hides the wizard. The caller closes the hidden
+    ///     window once the shell is stable, so skipping and finishing share one dismissal path.
     /// </summary>
-    private void OnSkip(object sender, RoutedEventArgs e)
+    private async void OnSkip(object sender, RoutedEventArgs e)
     {
-        Close();
+        try
+        {
+            await AppServices.Settings.CompleteOnboardingAsync();
+        }
+        catch (Exception)
+        {
+            // The wizard is going away either way
+        }
+
+        _completed = true;
+
+        HideAndDismiss();
+    }
+
+    /// <summary>
+    ///     Hides the wizard and releases <see cref="Dismissed" /> without destroying the window. The
+    ///     shell opens while the wizard is only hidden, and the caller closes it once the shell has
+    ///     settled, because destroying this window while the shell is activating fails fast in
+    ///     <c>InputNonClientPointerSourceWinRT.PostDestroy</c> on Windows App SDK 2.6.5.
+    /// </summary>
+    private void HideAndDismiss()
+    {
+        _themeService.ThemeChanged -= OnThemeChanged;
+
+        AppWindow.Hide();
+
+        _dismissed.TrySetResult();
     }
 
     private async Task FinishAsync()
@@ -408,11 +455,13 @@ public sealed partial class GuideWindow
 
             await settings.SetIdentityAsync(_identity);
             await settings.SetRegionAsync(_region);
+            await settings.SetGradeAsync(_grade);
             await settings.SetSelectedSubjectsAsync(_selectedSubjects);
             await settings.CompleteOnboardingAsync();
 
             _completed = true;
-            Close();
+
+            HideAndDismiss();
         }
         finally
         {
@@ -479,6 +528,34 @@ public sealed partial class GuideWindow
             1 => StudentIdentity.Teacher,
             2 => StudentIdentity.Parent,
             _ => StudentIdentity.None
+        };
+    }
+
+    private static int IndexOfGrade(int grade)
+    {
+        return grade switch
+        {
+            StudentGrade.JuniorFirst => 0,
+            StudentGrade.JuniorSecond => 1,
+            StudentGrade.JuniorThird => 2,
+            StudentGrade.SeniorFirst => 3,
+            StudentGrade.SeniorSecond => 4,
+            StudentGrade.SeniorThird => 5,
+            _ => -1
+        };
+    }
+
+    private static int GradeForIndex(int index)
+    {
+        return index switch
+        {
+            0 => StudentGrade.JuniorFirst,
+            1 => StudentGrade.JuniorSecond,
+            2 => StudentGrade.JuniorThird,
+            3 => StudentGrade.SeniorFirst,
+            4 => StudentGrade.SeniorSecond,
+            5 => StudentGrade.SeniorThird,
+            _ => StudentGrade.None
         };
     }
 }

@@ -1,7 +1,10 @@
+using System.Globalization;
 using Caelum.Core.Data;
+using Caelum.Core.Domain;
 using Caelum.Core.Localization;
 using Caelum.Pages;
 using Caelum.Services;
+using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
@@ -21,6 +24,12 @@ public sealed partial class MainWindow
 {
     private readonly StringLocalizer _strings = new();
     private readonly ThemeService _themeService;
+
+    /// <summary>The last session list rendered into the pane, so unchanged writes do not rebuild it.</summary>
+    private string? _builtSignature;
+
+    /// <summary>Set while the selection is changed from code, to keep the handler from re-entering.</summary>
+    private bool _suppressSelection;
 
     /// <summary>Creates the window, wires the shell up and opens the landing page.</summary>
     public MainWindow()
@@ -42,9 +51,20 @@ public sealed partial class MainWindow
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(AppTitleBar);
 
+        // The bar carries interactive content (the search box), for which the Fluent guidance is a
+        // taller title bar. The system caption buttons are rendered at the standard height otherwise,
+        // so they would fill only the top of the bar and their touch target would not match it.
+        // PreferredHeightOption requires ExtendsContentIntoTitleBar to be set first
+        if (AppWindowTitleBar.IsCustomizationSupported())
+            AppWindow.TitleBar.PreferredHeightOption = TitleBarHeightOption.Tall;
+
         DesktopShare.Initialise(this);
 
         ApplyCaptions();
+
+        // The session list under the assistant tab follows the stored conversations
+        AppServices.Chats.Reloaded += OnChatsReloaded;
+        BuildSessions();
 
         // Start on the dashboard. The navigation item below is selected to match.
         MainFrame.Navigate(typeof(HomePage));
@@ -79,11 +99,210 @@ public sealed partial class MainWindow
     {
         HomeItem.Content = _strings.Get("home");
         HistoryItem.Content = _strings.Get("history");
+        ProphetsItem.Content = _strings.Get("prophets");
+        NewSessionItem.Content = _strings.Get("chat_new_session");
         // The pane's settings item is built by NavigationView itself and comes with the framework's
         // own caption, which would keep answering in the shell language after the student switches.
         // SettingsItem is typed object here, as opposed to the NavigationViewItem it really is
         if (Navigation.SettingsItem is NavigationViewItem settingsItem)
             settingsItem.Content = _strings.Get("settings");
+    }
+
+    // ------------------------------------------------------------------
+    // Assistant sessions
+    // ------------------------------------------------------------------
+
+    private void OnChatsReloaded(object? sender, EventArgs e)
+    {
+        BuildSessions();
+    }
+
+    /// <summary>
+    ///     Rebuilds the session entries under the assistant tab. The new-chat entry stays at the top,
+    ///     and the sessions are inserted below it in the order the service reports (most recent first).
+    /// </summary>
+    private void BuildSessions()
+    {
+        var sessions = AppServices.Chats.Sessions;
+
+        // The service raises Reloaded for every write, but the pane only shows ids and titles, so a
+        // rebuild is skipped until one of those actually changes
+        var signature = string.Join(
+            "|",
+            sessions.Select(session => $"{session.Id}:{session.Title}"));
+
+        if (signature == _builtSignature) return;
+
+        _builtSignature = signature;
+
+        // Drop the previous session entries, keeping the new-chat entry that sits at the top
+        while (ProphetsItem.MenuItems.Count > 1)
+            ProphetsItem.MenuItems.RemoveAt(1);
+
+        for (var index = sessions.Count - 1; index >= 0; index--)
+        {
+            var session = sessions[index];
+
+            var item = new NavigationViewItem
+            {
+                Content = string.IsNullOrWhiteSpace(session.Title)
+                    ? _strings.Get("chat_title_default")
+                    : session.Title,
+                Tag = $"Session:{session.Id}",
+                Icon = new SymbolIcon(Symbol.Message)
+            };
+
+            var rename = new MenuFlyoutItem
+            {
+                Text = _strings.Get("chat_rename_session"),
+                Tag = session.Id
+            };
+
+            rename.Click += OnRenameSessionClick;
+
+            var delete = new MenuFlyoutItem
+            {
+                Text = _strings.Get("chat_delete_session"),
+                Tag = session.Id
+            };
+
+            delete.Click += OnDeleteSessionClick;
+
+            var flyout = new MenuFlyout();
+            flyout.Items.Add(rename);
+            flyout.Items.Add(delete);
+
+            item.ContextFlyout = flyout;
+
+            ProphetsItem.MenuItems.Insert(1, item);
+        }
+
+        RestoreSessionSelection();
+    }
+
+    /// <summary>
+    ///     Puts the pane selection back on the entry for the current session after the entries have
+    ///     been rebuilt, because removing the selected item clears the highlight.
+    /// </summary>
+    private void RestoreSessionSelection()
+    {
+        var current = AppServices.Chats.CurrentSession;
+
+        if (current is null) return;
+
+        foreach (var item in ProphetsItem.MenuItems)
+        {
+            if (item is NavigationViewItem child &&
+                string.Equals(child.Tag as string, $"Session:{current.Id}", StringComparison.Ordinal))
+            {
+                SetSelectedItem(child);
+                return;
+            }
+        }
+    }
+
+    private void SetSelectedItem(NavigationViewItem item)
+    {
+        if (ReferenceEquals(Navigation.SelectedItem, item)) return;
+
+        _suppressSelection = true;
+
+        Navigation.SelectedItem = item;
+
+        _suppressSelection = false;
+    }
+
+    private async Task NewSessionAsync()
+    {
+        await AppServices.Chats.CreateAsync().ConfigureAwait(true);
+
+        MainFrame.Navigate(typeof(ProphetsPage));
+    }
+
+    private async Task SwitchSessionAsync(long sessionId)
+    {
+        await AppServices.Chats.SwitchAsync(sessionId).ConfigureAwait(true);
+
+        if (MainFrame.Content is ProphetsPage page)
+            await page.ReloadAsync().ConfigureAwait(true);
+        else
+            MainFrame.Navigate(typeof(ProphetsPage));
+    }
+
+    private async void OnDeleteSessionClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuFlyoutItem item || item.Tag is not long sessionId) return;
+
+        var dialog = new ContentDialog
+        {
+            Title = _strings.Get("attention"),
+            Content = _strings.Get("chat_delete_confirm"),
+            PrimaryButtonText = _strings.Get("delete"),
+            CloseButtonText = _strings.Get("cancel"),
+            XamlRoot = MainFrame.XamlRoot
+        };
+
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
+
+        await AppServices.Chats.DeleteAsync(sessionId).ConfigureAwait(true);
+
+        BuildSessions();
+
+        if (MainFrame.Content is ProphetsPage page)
+            await page.ReloadAsync().ConfigureAwait(true);
+    }
+
+    private async void OnRenameSessionClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuFlyoutItem item || item.Tag is not long sessionId) return;
+
+        var session = AppServices.Chats.Sessions.FirstOrDefault(candidate => candidate.Id == sessionId);
+
+        var currentTitle = session is null || string.IsNullOrWhiteSpace(session.Title)
+            ? _strings.Get("chat_title_default")
+            : session.Title;
+
+        var input = new TextBox
+        {
+            Text = currentTitle,
+            PlaceholderText = _strings.Get("chat_title_default"),
+            HorizontalAlignment = HorizontalAlignment.Stretch
+        };
+
+        var dialog = new ContentDialog
+        {
+            Title = _strings.Get("chat_rename_session"),
+            Content = input,
+            PrimaryButtonText = _strings.Get("chat_rename_confirm"),
+            CloseButtonText = _strings.Get("cancel"),
+            XamlRoot = MainFrame.XamlRoot
+        };
+
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
+
+        // An empty name falls back to the default title the pane shows
+        await AppServices.Chats.RenameAsync(sessionId, input.Text.Trim()).ConfigureAwait(true);
+    }
+
+    /// <summary>
+    ///     Picks the navigation entry that represents the conversation the chat page is showing, so
+    ///     the pane highlights the current session rather than only the assistant tab.
+    /// </summary>
+    private NavigationViewItem ResolveProphetsItem()
+    {
+        var currentId = AppServices.Chats.CurrentSession?.Id;
+
+        if (currentId is not null)
+        {
+            foreach (var item in ProphetsItem.MenuItems)
+            {
+                if (item is NavigationViewItem child &&
+                    string.Equals(child.Tag as string, $"Session:{currentId.Value}", StringComparison.Ordinal))
+                    return child;
+            }
+        }
+
+        return ProphetsItem;
     }
 
     /// <summary>
@@ -100,9 +319,9 @@ public sealed partial class MainWindow
     }
 
     /// <summary>
-    ///     Fills the suggestion list with the exams whose name matches the typed text, the ones
-    ///     starting with it first. A blank query offers nothing, so the list stays shut until the
-    ///     student types.
+    ///     Fills the suggestion list with the exams and assistant sessions whose title matches the
+    ///     typed text, the ones starting with it first. A blank query offers nothing, so the list
+    ///     stays shut until the student types.
     /// </summary>
     private void UpdateSearchSuggestions(AutoSuggestBox sender)
     {
@@ -114,40 +333,87 @@ public sealed partial class MainWindow
             return;
         }
 
-        sender.ItemsSource = AppServices.Exams.Exams
-            .Where(exam => exam.Exam.Name.Contains(query, StringComparison.CurrentCultureIgnoreCase))
-            .OrderByDescending(exam => exam.Exam.Name.StartsWith(query, StringComparison.CurrentCultureIgnoreCase))
-            .ThenBy(exam => exam.Exam.Name, StringComparer.CurrentCultureIgnoreCase)
+        var entries = new List<SearchEntry>();
+
+        entries.AddRange(
+            AppServices.Exams.Exams
+                .Where(exam => exam.Exam.Name.Contains(query, StringComparison.CurrentCultureIgnoreCase))
+                .Select(exam => new SearchEntry(
+                    exam.Exam.Name,
+                    ExamDates.FormatDateRange(exam.Exam.StartDate, exam.Exam.EndDate),
+                    exam.Exam.Id,
+                    IsSession: false)));
+
+        entries.AddRange(
+            AppServices.Chats.Sessions
+                .Where(session => SessionTitle(session).Contains(query, StringComparison.CurrentCultureIgnoreCase))
+                .Select(session => new SearchEntry(
+                    SessionTitle(session),
+                    $"{_strings.Get("search_session")} · {FormatSessionTime(session.UpdatedAt)}",
+                    session.Id,
+                    IsSession: true)));
+
+        sender.ItemsSource = entries
+            .OrderByDescending(entry => entry.Title.StartsWith(query, StringComparison.CurrentCultureIgnoreCase))
+            .ThenBy(entry => entry.Title, StringComparer.CurrentCultureIgnoreCase)
             .Take(8)
             .ToList();
     }
 
     private void OnSearchSuggestionChosen(AutoSuggestBox sender, AutoSuggestBoxSuggestionChosenEventArgs args)
     {
-        if (args.SelectedItem is not ExamWithTotal exam) return;
+        if (args.SelectedItem is not SearchEntry entry) return;
 
-        OpenExam(exam);
+        OpenEntry(entry);
     }
 
     private void OnSearchQuerySubmitted(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs args)
     {
-        // Enter opens an exam the student actually highlighted in the list; a plain Enter on
+        // Enter opens the row the student actually highlighted in the list; a plain Enter on
         // typed text leaves the history filter alone
-        if (args.ChosenSuggestion is not ExamWithTotal exam) return;
+        if (args.ChosenSuggestion is not SearchEntry entry) return;
 
-        OpenExam(exam);
+        OpenEntry(entry);
     }
 
     /// <summary>
-    ///     Opens the chosen exam and leaves the box showing its name, so the query and the list
-    ///     behind the detail page agree.
+    ///     Opens the chosen row and leaves the box showing its title, so the query and the page
+    ///     behind it agree.
     /// </summary>
-    private void OpenExam(ExamWithTotal exam)
+    private void OpenEntry(SearchEntry entry)
     {
-        AppServices.Search.SetQuery(exam.Exam.Name);
-        TitleSearchBox.Text = exam.Exam.Name;
+        AppServices.Search.SetQuery(entry.Title);
+        TitleSearchBox.Text = entry.Title;
 
-        MainFrame.Navigate(typeof(DetailPage), exam.Exam.Id);
+        if (entry.IsSession)
+        {
+            OpenSession(entry.Id);
+            return;
+        }
+
+        MainFrame.Navigate(typeof(DetailPage), entry.Id);
+    }
+
+    private async void OpenSession(long sessionId)
+    {
+        await AppServices.Chats.SwitchAsync(sessionId).ConfigureAwait(true);
+
+        if (MainFrame.Content is ProphetsPage page)
+            await page.ReloadAsync().ConfigureAwait(true);
+        else
+            MainFrame.Navigate(typeof(ProphetsPage));
+    }
+
+    private string SessionTitle(ChatSession session) =>
+        string.IsNullOrWhiteSpace(session.Title) ? _strings.Get("chat_title_default") : session.Title;
+
+    private string FormatSessionTime(long updatedAt)
+    {
+        if (updatedAt <= 0) return string.Empty;
+
+        return DateTimeOffset.FromUnixTimeMilliseconds(updatedAt)
+            .LocalDateTime
+            .ToString("yyyy-MM-dd HH:mm", CultureInfo.CurrentCulture);
     }
 
     private void OnThemeChanged(object? sender, EventArgs e)
@@ -197,8 +463,12 @@ public sealed partial class MainWindow
     ///     Routes a pane selection. Every tag is matched explicitly: a catch-all would quietly send
     ///     a misspelt or newly added item to the dashboard instead of showing that it is unhandled.
     /// </summary>
-    private void OnTabSelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
+    private async void OnTabSelectionChanged(
+        NavigationView sender,
+        NavigationViewSelectionChangedEventArgs args)
     {
+        if (_suppressSelection) return;
+
         // NavigationView contributes a settings item of its own, below the footer items and shown
         // without being asked for, because IsSettingsVisible is true by default. The control builds
         // it, so it belongs to neither collection and carries no Tag, which leaves the switch below
@@ -222,6 +492,34 @@ public sealed partial class MainWindow
             case "Home":
                 MainFrame.Navigate(typeof(HomePage));
                 break;
+
+            case "Prophets":
+                MainFrame.Navigate(typeof(ProphetsPage));
+                break;
+
+            case "NewSession":
+                await NewSessionAsync().ConfigureAwait(true);
+                break;
+
+            default:
+                // A session entry carries its id in the tag; anything else is left alone so a
+                // misspelt tag cannot quietly navigate to the dashboard
+                if (item.Tag is string tag &&
+                    tag.StartsWith("Session:", StringComparison.Ordinal) &&
+                    long.TryParse(
+                        tag["Session:".Length..],
+                        NumberStyles.Integer,
+                        CultureInfo.InvariantCulture,
+                        out var sessionId))
+                {
+                    // The pane sets the selection back to the current session after a rebuild, which
+                    // raises this event again; that is not a request to switch
+                    if (AppServices.Chats.CurrentSession?.Id == sessionId) return;
+
+                    await SwitchSessionAsync(sessionId).ConfigureAwait(true);
+                }
+
+                break;
         }
     }
 
@@ -235,13 +533,17 @@ public sealed partial class MainWindow
     {
         var page = MainFrame.Content;
 
-        Navigation.SelectedItem = page switch
+        var selected = page switch
         {
             HomePage => HomeItem,
             HistoryPage => HistoryItem,
+            ProphetsPage => ResolveProphetsItem(),
             SettingsPage when Navigation.SettingsItem is NavigationViewItem settingsItem => settingsItem,
-            _ => Navigation.SelectedItem
+            _ => Navigation.SelectedItem as NavigationViewItem
         };
+
+        if (selected is not null)
+            SetSelectedItem(selected);
 
         ApplyBackButton();
     }
@@ -258,6 +560,7 @@ public sealed partial class MainWindow
     private void OnClosed(object sender, WindowEventArgs args)
     {
         _themeService.ThemeChanged -= OnThemeChanged;
+        AppServices.Chats.Reloaded -= OnChatsReloaded;
 
         AppServices.Shutdown();
     }

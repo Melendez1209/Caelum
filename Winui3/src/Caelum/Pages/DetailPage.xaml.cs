@@ -18,11 +18,20 @@ namespace Caelum.Pages;
 /// </summary>
 public sealed partial class DetailPage
 {
+    /// <summary>Fewest subjects a radar chart needs before it reads as a shape rather than a point.</summary>
+    private const int RadarMinimumSubjects = 3;
+
     private readonly StringLocalizer _strings = new();
     private Exam? _exam;
 
     private long _examId;
     private string _shareText = string.Empty;
+
+    /// <summary>The loaded exam's figures, kept so a theme change can rebuild the charts.</summary>
+    private IReadOnlyList<SubjectFigure> _subjects = [];
+
+    /// <summary>The historical subject averages, kept for the same reason as <see cref="_subjects" />.</summary>
+    private IReadOnlyList<SubjectStat> _stats = [];
 
     /// <summary>Creates the page and translates its captions.</summary>
     public DetailPage()
@@ -34,21 +43,24 @@ public sealed partial class DetailPage
         TotalScoreCaption.Text = _strings.Get("total_score");
         PercentageCaption.Text = _strings.Get("percentage");
         RankCaption.Text = _strings.Get("rank");
-        DistributionCaption.Text = _strings.Get("score_distribution");
+        DistributionCaption.Text = _strings.Get("score_rate");
         SubjectsCaption.Text = _strings.Get("subjects");
 
         EditButton.Label = _strings.Get("edit");
         DeleteButton.Label = _strings.Get("delete");
         ShareButton.Label = _strings.Get("share");
         FavouriteButton.Label = _strings.Get("add_favourite");
+        ProphetsButton.Label = _strings.Get("prophets");
 
         AppServices.Exams.Reloaded += OnExamsReloaded;
+        AppServices.Theme.ThemeChanged += OnThemeChanged;
     }
 
     /// <inheritdoc />
     protected override void OnNavigatedFrom(NavigationEventArgs e)
     {
         AppServices.Exams.Reloaded -= OnExamsReloaded;
+        AppServices.Theme.ThemeChanged -= OnThemeChanged;
 
         base.OnNavigatedFrom(e);
     }
@@ -78,6 +90,20 @@ public sealed partial class DetailPage
         _exam.IsFavorite = current.Exam.IsFavorite;
 
         ApplyFavouriteState();
+    }
+
+    /// <summary>
+    ///     Rebuilds the charts when the theme changes, because a Skia colour is a snapshot and cannot
+    ///     follow an XAML theme resource the way a brush does.
+    /// </summary>
+    private void OnThemeChanged(object? sender, EventArgs e)
+    {
+        if (_exam is null) return;
+
+        ChartPalette.Refresh(AppServices.Theme.CurrentTheme);
+
+        BuildDistributionChart(_subjects, _stats);
+        BuildComparisonChart();
     }
 
     /// <inheritdoc />
@@ -144,20 +170,124 @@ public sealed partial class DetailPage
             })
             .ToList();
 
-        // One slice per subject, each in its own colour. The colour is keyed on the subject rather
-        // than on its position in the legend, so a subject looks the same in every chart
-        DistributionChart.Series = subjects
-            .Select(subject => (ISeries)new PieSeries<double>
-            {
-                Values = [subject.Mark],
-                Name = subject.Name,
-                Fill = new SolidColorPaint(ChartPalette.CategoricalAt(SubjectCatalogue.IndexOfKey(subject.SubjectKey)))
-            })
-            .ToArray();
+        _subjects = subjects;
+        _stats = stats;
 
+        BuildDistributionChart(subjects, stats);
         BuildComparisonChart();
         BuildSubjectRows(subjects);
         BuildShareText(totalMark, totalFullMark, totalPercentage, rank, subjects);
+    }
+
+    /// <summary>
+    ///     Chooses between the radar chart and the pie chart. A radar chart needs at least three axes
+    ///     before it reads as a shape, so a smaller exam falls back to the pie, which still shows a
+    ///     split.
+    /// </summary>
+    private void BuildDistributionChart(IReadOnlyList<SubjectFigure> subjects, IReadOnlyList<SubjectStat> stats)
+    {
+        if (subjects.Count < RadarMinimumSubjects)
+        {
+            DistributionCaption.Text = _strings.Get("score_distribution");
+            RadarChart.Visibility = Visibility.Collapsed;
+            DistributionChart.Visibility = Visibility.Visible;
+
+            // One slice per subject, each in its own colour. The colour is keyed on the subject rather
+            // than on its position in the legend, so a subject looks the same in every chart
+            DistributionChart.Series = subjects
+                .Select(subject => (ISeries)new PieSeries<double>
+                {
+                    Values = [subject.Mark],
+                    Name = subject.Name,
+                    Fill = new SolidColorPaint(ChartPalette.CategoricalAt(SubjectCatalogue.IndexOfKey(subject.SubjectKey)))
+                })
+                .ToArray();
+
+            return;
+        }
+
+        DistributionCaption.Text = _strings.Get("score_rate");
+        RadarChart.Visibility = Visibility.Visible;
+        DistributionChart.Visibility = Visibility.Collapsed;
+
+        BuildRadarChart(subjects, stats);
+    }
+
+    /// <summary>
+    ///     The exam as a closed shape, one axis per subject, with the historical mean drawn alongside
+    ///     so a strong or weak subject stands out. A subject with no history is skipped on the mean
+    ///     line rather than dragged down to zero.
+    /// </summary>
+    private void BuildRadarChart(IReadOnlyList<SubjectFigure> subjects, IReadOnlyList<SubjectStat> stats)
+    {
+        var labels = subjects.Select(subject => subject.Name).ToArray();
+
+        var rates = subjects
+            .Select(subject => (double)ExamScoring.Percentage(subject.Mark, subject.FullMark))
+            .ToArray();
+
+        var averages = subjects
+            .Select(subject => ExamScoring.HistoricalAverage(subject.SubjectKey, stats))
+            .Select(stat => stat is null || stat.AvgFullMark <= 0f
+                ? null
+                : (double?)ExamScoring.Percentage(stat.AvgMark, stat.AvgFullMark))
+            .ToArray();
+
+        var series = new List<ISeries>
+        {
+            new PolarLineSeries<double>
+            {
+                Name = _strings.Get("this_exam"),
+                Values = rates,
+                IsClosed = true,
+                Stroke = new SolidColorPaint(ChartPalette.Accent) { StrokeThickness = 2 },
+                Fill = new SolidColorPaint(ChartPalette.Accent.WithAlpha(40)),
+                GeometrySize = 5,
+                GeometryFill = new SolidColorPaint(ChartPalette.Accent),
+                GeometryStroke = new SolidColorPaint(ChartPalette.Surface),
+                LineSmoothness = 0
+            }
+        };
+
+        if (averages.Any(average => average is not null))
+        {
+            series.Add(new PolarLineSeries<double?>
+            {
+                Name = _strings.Get("history_average"),
+                Values = averages,
+                IsClosed = true,
+                EnableNullSplitting = false,
+                Stroke = new SolidColorPaint(ChartPalette.AccentSecondary) { StrokeThickness = 2 },
+                Fill = null,
+                GeometrySize = 0,
+                LineSmoothness = 0
+            });
+        }
+
+        RadarChart.Series = series;
+
+        RadarChart.AngleAxes =
+        [
+            new PolarAxis
+            {
+                Labels = labels,
+                LabelsPaint = new SolidColorPaint(ChartPalette.Text),
+                SeparatorsPaint = new SolidColorPaint(ChartPalette.GridLine),
+                TextSize = 11
+            }
+        ];
+
+        RadarChart.RadiusAxes =
+        [
+            new PolarAxis
+            {
+                MinLimit = 0,
+                MaxLimit = 100,
+                LabelsPaint = new SolidColorPaint(ChartPalette.Text),
+                SeparatorsPaint = new SolidColorPaint(ChartPalette.GridLine),
+                TextSize = 10
+            }
+        ];
     }
 
     /// <summary>
@@ -268,16 +398,15 @@ public sealed partial class DetailPage
         int rank,
         IReadOnlyList<SubjectFigure> subjects)
     {
-        var lines = new List<string>
-        {
+        List<string> lines =
+        [
             $"{_strings.Get("exam")}: {_exam?.Name}",
             $"{_strings.Get("exam_dates")}: {ExamDates.FormatDateRange(_exam!.StartDate, _exam.EndDate)}",
             $"{_strings.Get("total_score")}: {totalMark:0.#}/{totalFullMark:0.#}",
             $"{_strings.Get("percentage")}: {totalPercentage:0.#}%",
-            $"{_strings.Get("rank")}: {rank}"
-        };
-
-        lines.AddRange(subjects.Select(s => $"{s.Name}: {s.Mark:0.#}/{s.FullMark:0.#}"));
+            $"{_strings.Get("rank")}: {rank}",
+            .. subjects.Select(s => $"{s.Name}: {s.Mark:0.#}/{s.FullMark:0.#}")
+        ];
 
         _shareText = string.Join(Environment.NewLine, lines);
     }
@@ -351,6 +480,14 @@ public sealed partial class DetailPage
 
     private void OnShare(object sender, RoutedEventArgs e) =>
         DesktopShare.ShareText(_exam?.Name ?? _strings.Get("exam"), _shareText);
+
+    private void OnOpenProphets(object sender, RoutedEventArgs e)
+    {
+        if (_exam is null) return;
+
+        // The assistant reads this exam's scores, so the id travels with the navigation
+        this.Frame.Navigate(typeof(ProphetsPage), _exam.Id);
+    }
 
     /// <summary>One subject's figures on the detail page.</summary>
     /// <param name="SubjectKey">Stable subject key, used to pick a consistent colour.</param>

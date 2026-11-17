@@ -64,9 +64,8 @@ public sealed partial class HistoryPage
         ShareSummaryItem.Text = _strings.Get("share_summary");
         ShareDetailsItem.Text = _strings.Get("share_details");
 
-        // Escape cancels a running marquee. An accelerator, not the list's KeyDown, because mid
-        // drag the keyboard focus can sit anywhere in the page and the event would never reach
-        // the list
+        // Escape cancels a running marquee. An accelerator, not the list's KeyDown, because mid-drag
+        // the keyboard focus can sit anywhere in the page and the event would never reach the list
         var escapeAccelerator = new KeyboardAccelerator { Key = VirtualKey.Escape };
         escapeAccelerator.Invoked += OnEscapeInvoked;
         this.KeyboardAccelerators.Add(escapeAccelerator);
@@ -328,7 +327,7 @@ public sealed partial class HistoryPage
         _marqueeActive = true;
         _marqueeAdditive = IsCtrlDown();
         _marqueeOrigin = point.Position;
-        _marqueeBase = ExamList.SelectedItems.OfType<object>().ToList();
+        _marqueeBase = [.. Enumerable.OfType<object>(ExamList.SelectedItems)];
         _marqueeLast = [];
 
         UpdateMarqueeRect(new Rect(_marqueeOrigin.X, _marqueeOrigin.Y, 0, 0));
@@ -422,7 +421,7 @@ public sealed partial class HistoryPage
 
         var selection = _marqueeAdditive && _marqueeBase is not null
             ? _marqueeBase.Union(inside)
-            : (IEnumerable<object>)inside;
+            : inside;
 
         foreach (var item in selection) ExamList.SelectedItems.Add(item);
     }
@@ -475,7 +474,9 @@ public sealed partial class HistoryPage
     /// <summary>True when the press landed on a card, a checkbox or the scroll bars themselves.</summary>
     private static bool IsOverInteractive(object? source)
     {
-        for (var current = source as DependencyObject; current is not null; current = VisualTreeHelper.GetParent(current))
+        for (var current = source as DependencyObject;
+             current is not null;
+             current = VisualTreeHelper.GetParent(current))
         {
             if (current is ListViewItem or Thumb or ScrollBar) return true;
         }
@@ -559,23 +560,22 @@ public sealed partial class HistoryPage
             var totalPercentage = ExamScoring.Percentage(totalMark, totalFullMark);
             var rank = ExamScoring.RankOf(loaded.Exam.Id, AppServices.Exams.Exams.ToList());
 
-            var lines = new List<string>
-            {
+            List<string> lines =
+            [
                 $"{_strings.Get("exam")}: {loaded.Exam.Name}",
                 $"{_strings.Get("exam_dates")}: {ExamDates.FormatDateRange(loaded.Exam.StartDate, loaded.Exam.EndDate)}",
                 $"{_strings.Get("total_score")}: {ExamScoring.FormatScoreValue(totalMark)}/{ExamScoring.FormatScoreValue(totalFullMark)}",
                 $"{_strings.Get("percentage")}: {totalPercentage:0.#}%",
-                $"{_strings.Get("rank")}: {rank}"
-            };
+                $"{_strings.Get("rank")}: {rank}",
+                .. ExamScoring.RecordedSubjectKeys(SubjectCatalogue.ExamSubjectKeys, scores)
+                    .Select(key =>
+                    {
+                        var score = scores.First(item => item.SubjectKey == key);
 
-            lines.AddRange(ExamScoring.RecordedSubjectKeys(SubjectCatalogue.ExamSubjectKeys, scores)
-                .Select(key =>
-                {
-                    var score = scores.First(item => item.SubjectKey == key);
-
-                    return $"{SubjectLabels.NameOf(_strings, key)}: " +
-                           $"{ExamScoring.FormatScoreValue(score.Mark)}/{ExamScoring.FormatScoreValue(score.FullMark)}";
-                }));
+                        return $"{SubjectLabels.NameOf(_strings, key)}: " +
+                               $"{ExamScoring.FormatScoreValue(score.Mark)}/{ExamScoring.FormatScoreValue(score.FullMark)}";
+                    })
+            ];
 
             blocks.Add(string.Join(Environment.NewLine, lines));
         }
@@ -612,4 +612,3 @@ public sealed partial class HistoryPage
         return ExamList.SelectedItems.OfType<ExamWithTotal>().Select(exam => exam.Exam.Id).ToList();
     }
 }
-

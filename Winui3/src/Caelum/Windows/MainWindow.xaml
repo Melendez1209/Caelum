@@ -15,10 +15,6 @@
     </Window.SystemBackdrop>
 
     <Grid>
-        <Grid.Resources>
-            <converters:ExamDateRangeConverter x:Key="DateRangeText" />
-        </Grid.Resources>
-
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
@@ -55,18 +51,18 @@
                     x:Name="TitleSearchBox"
                     QueryIcon="Find"
                     PlaceholderText="Search exams"
-                    TextMemberPath="Exam.Name"
+                    TextMemberPath="Title"
                     TextChanged="OnTitleSearchChanged"
                     SuggestionChosen="OnSearchSuggestionChosen"
                     QuerySubmitted="OnSearchQuerySubmitted">
                     <AutoSuggestBox.ItemTemplate>
                         <DataTemplate>
                             <StackPanel Spacing="2">
-                                <TextBlock Text="{Binding Exam.Name}" />
+                                <TextBlock Text="{Binding Title}" />
                                 <TextBlock
                                     Style="{StaticResource CaptionTextBlockStyle}"
                                     Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                    Text="{Binding Converter={StaticResource DateRangeText}}" />
+                                    Text="{Binding Subtitle}" />
                             </StackPanel>
                         </DataTemplate>
                     </AutoSuggestBox.ItemTemplate>
@@ -100,6 +96,20 @@
             <NavigationView.MenuItems>
                 <NavigationViewItem x:Name="HomeItem" Content="Home" Tag="Home" Icon="Home" />
                 <NavigationViewItem x:Name="HistoryItem" Content="History" Tag="History" Icon="AllApps" />
+                <!--
+                    The assistant tab is a parent whose children are the saved conversations plus a
+                    new-chat entry. The session items are rebuilt from AppServices.Chats, so their
+                    captions follow the stored titles and the chosen language.
+                -->
+                <NavigationViewItem x:Name="ProphetsItem" Content="Prophets" Tag="Prophets" Icon="Message">
+                    <NavigationViewItem.MenuItems>
+                        <NavigationViewItem
+                            x:Name="NewSessionItem"
+                            Content="New chat"
+                            Tag="NewSession"
+                            Icon="Add" />
+                    </NavigationViewItem.MenuItems>
+                </NavigationViewItem>
             </NavigationView.MenuItems>
 
             <!--

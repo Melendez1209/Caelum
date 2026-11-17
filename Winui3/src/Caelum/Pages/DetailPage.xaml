@@ -103,6 +103,14 @@
                                     Grid.Row="0"
                                     x:Name="DistributionCaption"
                                     Style="{StaticResource BodyStrongTextBlockStyle}" />
+                                <lvc:PolarChart
+                                    Grid.Row="1"
+                                    x:Name="RadarChart"
+                                    Margin="0,8,0,0"
+                                    LegendPosition="Right"
+                                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                    Visibility="Collapsed" />
+
                                 <lvc:PieChart
                                     Grid.Row="1"
                                     x:Name="DistributionChart"
@@ -148,6 +156,7 @@
                 </AppBarButton.Icon>
             </AppBarButton>
             <AppBarButton x:Name="ShareButton" Icon="Share" Label="Share" Click="OnShare" />
+            <AppBarButton x:Name="ProphetsButton" Icon="Message" Label="Prophets" Click="OnOpenProphets" />
             <AppBarButton x:Name="DeleteButton" Icon="Delete" Label="Delete" Click="OnDelete" />
         </CommandBar>
     </Grid>

@@ -75,11 +75,16 @@ public sealed class SettingsRepository(CaelumDbContext context) : ISettingsRepos
             stored.SelectedLanguage = settings.SelectedLanguage;
             stored.IsFirstLogin = settings.IsFirstLogin;
             stored.Identity = settings.Identity;
+            stored.Grade = settings.Grade;
             stored.Region = settings.Region;
             stored.SelectedSubjects = settings.SelectedSubjects;
             stored.TrendMetric = settings.TrendMetric;
             stored.SubjectMetric = settings.SubjectMetric;
             stored.HistoryViewMode = settings.HistoryViewMode;
+            stored.LlmProviderValue = settings.LlmProviderValue;
+            stored.LlmBaseUrl = settings.LlmBaseUrl;
+            stored.LlmModel = settings.LlmModel;
+            stored.CurrentChatSessionId = settings.CurrentChatSessionId;
         }
 
         await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);

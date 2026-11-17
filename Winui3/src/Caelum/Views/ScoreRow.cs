@@ -105,14 +105,14 @@ public sealed class ScoreRow : DependencyObject
     public string Mark
     {
         get => (string)GetValue(MarkProperty);
-        set => SetValue(MarkProperty, ExamScoring.ProcessScoreInput(value ?? string.Empty));
+        set => SetValue(MarkProperty, ExamScoring.ProcessScoreInput(value));
     }
 
     /// <summary>The full mark as typed.</summary>
     public string FullMark
     {
         get => (string)GetValue(FullMarkProperty);
-        set => SetValue(FullMarkProperty, value ?? string.Empty);
+        set => SetValue(FullMarkProperty, value);
     }
 
     /// <summary>

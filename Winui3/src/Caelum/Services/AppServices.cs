@@ -15,6 +15,8 @@ public static class AppServices
     private static CaelumDbContext? _context;
     private static IExamRepository? _examRepository;
     private static ISettingsRepository? _settingsRepository;
+    private static LlmService? _llm;
+    private static ChatService? _chats;
 
     /// <summary>The shared context. Valid only after <see cref="InitialiseAsync" /> has completed.</summary>
     public static CaelumDbContext Context =>
@@ -34,8 +36,18 @@ public static class AppServices
     /// <summary>The cached settings every page reads its preferences from.</summary>
     public static SettingsService Settings { get; private set; } = null!;
 
+    /// <summary>The model behind the assistant, configured from the settings page.</summary>
+    public static LlmService Llm =>
+        _llm ?? throw new InvalidOperationException(
+            $"{nameof(AppServices)} has not been initialised yet.");
+
     /// <summary>The observable exam store the list and chart pages bind to.</summary>
     public static ExamService Exams { get; private set; } = null!;
+
+    /// <summary>The assistant's saved sessions and the current one.</summary>
+    public static ChatService Chats =>
+        _chats ?? throw new InvalidOperationException(
+            $"{nameof(AppServices)} has not been initialised yet.");
 
     /// <summary>Resolves the stored preference into concrete theme values.</summary>
     public static ThemeService Theme { get; private set; } = null!;
@@ -67,14 +79,16 @@ public static class AppServices
 
             var context = CaelumDatabase.CreateContext();
 
-            await context.Database.EnsureCreatedAsync(cancellationToken).ConfigureAwait(true);
+            await DatabaseMigrator.MigrateAsync(context, cancellationToken).ConfigureAwait(true);
 
             var settingsRepository = new SettingsRepository(context);
             var settings = new SettingsService(settingsRepository);
             var exams = new ExamService(new ExamRepository(context));
+            var chats = new ChatService(new ChatRepository(context), settings);
 
             await settings.LoadAsync(cancellationToken).ConfigureAwait(true);
             await exams.LoadAsync(cancellationToken).ConfigureAwait(true);
+            await chats.LoadAsync(cancellationToken).ConfigureAwait(true);
 
             _context = context;
             _settingsRepository = settingsRepository;
@@ -82,6 +96,8 @@ public static class AppServices
             Settings = settings;
             Exams = exams;
             Theme = new ThemeService(settings);
+            _llm = new LlmService(settings, new DpapiSecretStore());
+            _chats = chats;
         }
         finally
         {
@@ -95,6 +111,11 @@ public static class AppServices
     /// </summary>
     public static void Shutdown()
     {
+        _llm?.Dispose();
+        _llm = null;
+
+        _chats = null;
+
         _context?.Dispose();
 
         _context = null;

@@ -31,6 +31,8 @@ public sealed partial class InputtingPage
         DiscardButton.Content = _strings.Get("discard");
         NameBox.PlaceholderText = _strings.Get("name_this");
         DatesCaption.Text = _strings.Get("exam_dates");
+        StartCaption.Text = _strings.Get("start_date");
+        EndCaption.Text = _strings.Get("end_date");
         HintText.Text = string.Empty;
 
         // The start of an exam cannot sit after today, so the calendar refuses future dates itself
@@ -38,6 +40,10 @@ public sealed partial class InputtingPage
         var today = DateTimeOffset.Now.Date;
         StartPicker.MaxDate = today;
         StartPicker.Date = today;
+
+        // The end of an exam cannot sit before its start, so the calendar refuses earlier dates
+        // itself instead of the page rejecting them after the student has picked one
+        EndPicker.MinDate = today;
         EndPicker.Date = today;
     }
 
@@ -68,6 +74,7 @@ public sealed partial class InputtingPage
         if (start > StartPicker.MaxDate) start = StartPicker.MaxDate;
 
         StartPicker.Date = start;
+        EndPicker.MinDate = start;
         EndPicker.Date = end;
     }
 
@@ -141,12 +148,7 @@ public sealed partial class InputtingPage
     {
         var validation = ExamScoring.ValidateScoreInputs(_rows.Select(row => row.ToScoreInput()));
 
-        ValidationText.Text = validation switch
-        {
-            ScoreValidation.NoMarkEntered => _strings.Get("no_mark_entered"),
-            ScoreValidation.MarkExceedsFull => _strings.Get("mark_exceeds_full"),
-            _ => string.Empty
-        };
+        ValidationText.Text = DescribeValidation(validation);
 
         ValidationText.Visibility = validation == ScoreValidation.Valid
             ? Visibility.Collapsed
@@ -162,17 +164,35 @@ public sealed partial class InputtingPage
         SaveButton.IsEnabled = datesAreValid && validation == ScoreValidation.Valid && !_saving;
     }
 
+    /// <summary>Translates a domain verdict into the message shown above the subject list.</summary>
+    private string DescribeValidation(ScoreValidation validation)
+    {
+        return validation switch
+        {
+            ScoreValidation.NoMarkEntered => _strings.Get("no_mark_entered"),
+            ScoreValidation.MissingMark => _strings.Get("missing_mark"),
+            ScoreValidation.MarkExceedsFull => _strings.Get("mark_exceeds_full"),
+            _ => string.Empty
+        };
+    }
+
     private void OnDateChanged(CalendarDatePicker sender, CalendarDatePickerDateChangedEventArgs args)
     {
         // Nudging the other picker keeps the pair valid as it is filled in, rather than disabling a
         // button and leaving the student to work out why it went grey
         if (sender == StartPicker)
         {
-            if (StartPicker.Date is { } start && EndPicker.Date is { } end && end < start) EndPicker.Date = start;
+            if (StartPicker.Date is { } start)
+            {
+                EndPicker.MinDate = start;
+
+                if (EndPicker.Date is { } end && end < start) EndPicker.Date = start;
+            }
         }
         else if (EndPicker.Date is { } chosen && StartPicker.Date is { } from && chosen < from)
         {
             StartPicker.Date = chosen;
+            EndPicker.MinDate = chosen;
         }
 
         UpdateValidation();
@@ -201,6 +221,18 @@ public sealed partial class InputtingPage
         var inputs = _rows.Select(row => row.ToScoreInput()).ToList();
         var name = NameBox.Text.Trim();
 
+        // The button is already disabled while the form is invalid, but the save is the last line of
+        // defence: nothing reaches the database without every selected subject carrying a mark and
+        // every mark sitting inside its full mark
+        var validation = ExamScoring.ValidateScoreInputs(inputs);
+
+        if (validation != ScoreValidation.Valid)
+        {
+            ValidationText.Text = DescribeValidation(validation);
+            ValidationText.Visibility = Visibility.Visible;
+            return;
+        }
+
         var startDate = ToEpochMilliseconds(StartPicker.Date);
         var endDate = ToEpochMilliseconds(EndPicker.Date);
 
@@ -213,13 +245,6 @@ public sealed partial class InputtingPage
 
         try
         {
-            if (ExamScoring.BuildExamScores(0, inputs).Count == 0)
-            {
-                ValidationText.Text = _strings.Get("no_mark_entered");
-                ValidationText.Visibility = Visibility.Visible;
-                return;
-            }
-
             if (navigation.ExamId == 0)
             {
                 var exam = new Exam

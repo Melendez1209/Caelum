@@ -3,6 +3,7 @@ using System.Globalization;
 using Caelum.Core.Data;
 using Caelum.Core.Domain;
 using Caelum.Core.Localization;
+using Caelum.Core.Services;
 using Caelum.Services;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -26,6 +27,8 @@ public sealed partial class SettingsPage
 
     private bool _locating;
     private bool _suppressEvents;
+    private bool _llmApiKeyEdited;
+    private bool _llmTesting;
 
     /// <summary>Creates the page and fills every card from the stored AppServices.Settings.</summary>
     public SettingsPage()
@@ -39,10 +42,22 @@ public sealed partial class SettingsPage
         AppearanceCaption.Text = _strings.Get("appearance_section");
 
         IdentityCaption.Text = _strings.Get("identity");
+        GradeCaption.Text = _strings.Get("grade");
         RegionCaption.Text = _strings.Get("region");
         RegionBox.PlaceholderText = _strings.Get("district");
         SubjectsCaption.Text = _strings.Get("subjects");
         LocateCaption.Text = _strings.Get("location_use");
+
+        ProphetsCaption.Text = _strings.Get("prophets");
+        LlmProviderCaption.Text = _strings.Get("llm_provider");
+        LlmBaseUrlCaption.Text = _strings.Get("llm_base_url");
+        LlmModelCaption.Text = _strings.Get("llm_model");
+        LlmApiKeyCaption.Text = _strings.Get("llm_api_key");
+        LlmApiKeyHint.Text = _strings.Get("llm_api_key_hint");
+        LlmApiKeyBox.PlaceholderText = _strings.Get("llm_api_key_hint_short");
+        LlmBaseUrlBox.PlaceholderText = _strings.Get("llm_base_url_hint");
+        LlmModelBox.PlaceholderText = _strings.Get("llm_model_hint");
+        LlmTestButton.Content = _strings.Get("llm_test_connection");
 
         DarkCaption.Text = _strings.Get("app_theme");
         LanguageCaption.Text = _strings.Get("language");
@@ -68,6 +83,8 @@ public sealed partial class SettingsPage
         };
 
         BuildSubjectBoxes();
+        BuildGradeOptions();
+        BuildLlmProviderOptions();
         BuildThemeOptions();
         BuildLanguageOptions();
 
@@ -175,6 +192,12 @@ public sealed partial class SettingsPage
         }
     }
 
+    private void BuildGradeOptions()
+    {
+        GradeOptions.ItemsSource = StudentGrade.All
+            .Select(grade => GradeLabels.NameOf(_strings, grade)).ToList();
+    }
+
     private void ApplyStoredSettings()
     {
         _suppressEvents = true;
@@ -186,6 +209,17 @@ public sealed partial class SettingsPage
                 StudentIdentity.Student => 0,
                 StudentIdentity.Teacher => 1,
                 StudentIdentity.Parent => 2,
+                _ => -1
+            };
+
+            GradeOptions.SelectedIndex = AppServices.Settings.Current.Grade switch
+            {
+                StudentGrade.JuniorFirst => 0,
+                StudentGrade.JuniorSecond => 1,
+                StudentGrade.JuniorThird => 2,
+                StudentGrade.SeniorFirst => 3,
+                StudentGrade.SeniorSecond => 4,
+                StudentGrade.SeniorThird => 5,
                 _ => -1
             };
 
@@ -218,6 +252,20 @@ public sealed partial class SettingsPage
                 .FirstOrDefault(option => option.Tag == AppServices.Settings.Current.SelectedLanguage);
 
             LanguageBox.SelectedItem = selectedLanguage ?? StringLocalizer.AvailableLanguages[0];
+
+            var provider = (LlmProviderOption)AppServices.Settings.Current.LlmProviderValue;
+
+            LlmProviderOptions.SelectedIndex = provider switch
+            {
+                LlmProviderOption.LongCat => 1,
+                LlmProviderOption.Custom => 2,
+                _ => 0
+            };
+
+            LlmBaseUrlBox.Text = AppServices.Settings.Current.LlmBaseUrl;
+            LlmModelBox.Text = AppServices.Settings.Current.LlmModel;
+
+            UpdateLlmFieldState(provider != LlmProviderOption.None);
         }
         finally
         {
@@ -238,6 +286,24 @@ public sealed partial class SettingsPage
         };
 
         await AppServices.Settings.SetIdentityAsync(identity);
+    }
+
+    private async void OnGradeChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_suppressEvents || GradeOptions.SelectedIndex < 0) return;
+
+        var grade = GradeOptions.SelectedIndex switch
+        {
+            0 => StudentGrade.JuniorFirst,
+            1 => StudentGrade.JuniorSecond,
+            2 => StudentGrade.JuniorThird,
+            3 => StudentGrade.SeniorFirst,
+            4 => StudentGrade.SeniorSecond,
+            5 => StudentGrade.SeniorThird,
+            _ => StudentGrade.None
+        };
+
+        await AppServices.Settings.SetGradeAsync(grade);
     }
 
     private async void OnRegionLostFocus(object sender, RoutedEventArgs e)
@@ -297,6 +363,145 @@ public sealed partial class SettingsPage
 
         await AppServices.Settings.SetSelectedSubjectsAsync(_subjects);
     }
+
+    // ------------------------------------------------------------------
+    // Prophets
+    // ------------------------------------------------------------------
+
+    private void BuildLlmProviderOptions()
+    {
+        LlmProviderOptions.ItemsSource = new[]
+        {
+            _strings.Get("llm_provider_none"),
+            _strings.Get("llm_provider_longcat"),
+            _strings.Get("llm_provider_custom")
+        };
+    }
+
+    private void UpdateLlmFieldState(bool enabled)
+    {
+        LlmBaseUrlBox.IsEnabled = enabled;
+        LlmModelBox.IsEnabled = enabled;
+        LlmApiKeyBox.IsEnabled = enabled;
+        LlmTestButton.IsEnabled = enabled && !_llmTesting;
+    }
+
+    private async void OnLlmProviderChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_suppressEvents) return;
+
+        var option = LlmProviderOptions.SelectedIndex switch
+        {
+            1 => LlmProviderOption.LongCat,
+            2 => LlmProviderOption.Custom,
+            _ => LlmProviderOption.None
+        };
+
+        if (option == LlmProviderOption.LongCat)
+        {
+            LlmBaseUrlBox.Text = LlmProviderPresets.LongCat.DefaultBaseUrl;
+            LlmModelBox.Text = LlmProviderPresets.LongCat.DefaultModel;
+        }
+
+        LlmTestMessage.Visibility = Visibility.Collapsed;
+
+        UpdateLlmFieldState(option != LlmProviderOption.None);
+
+        await AppServices.Settings.SetLlmConfigAsync(
+            (int)option,
+            LlmBaseUrlBox.Text,
+            LlmModelBox.Text);
+    }
+
+    private async void OnLlmConfigLostFocus(object sender, RoutedEventArgs e)
+    {
+        if (_suppressEvents) return;
+
+        LlmTestMessage.Visibility = Visibility.Collapsed;
+
+        await AppServices.Settings.SetLlmConfigAsync(
+            AppServices.Settings.Current.LlmProviderValue,
+            LlmBaseUrlBox.Text,
+            LlmModelBox.Text);
+    }
+
+    private void OnLlmApiKeyChanged(object sender, RoutedEventArgs e) => _llmApiKeyEdited = true;
+
+    private async void OnLlmApiKeyLostFocus(object sender, RoutedEventArgs e)
+    {
+        if (_suppressEvents || !_llmApiKeyEdited) return;
+
+        _llmApiKeyEdited = false;
+
+        try
+        {
+            AppServices.Llm.SetApiKey(LlmApiKeyBox.Password);
+        }
+        catch (Exception exception)
+        {
+            CrashLog.Log(exception);
+            await ShowMessageAsync(_strings.Get("llm_api_key_save_failed"));
+        }
+
+        // The box is cleared so the secret is not left on screen after it has been stored
+        LlmApiKeyBox.Password = string.Empty;
+
+        LlmTestMessage.Visibility = Visibility.Collapsed;
+    }
+
+    private async void OnLlmTestConnection(object sender, RoutedEventArgs e)
+    {
+        if (_llmTesting) return;
+
+        _llmTesting = true;
+
+        var enabled = (LlmProviderOption)AppServices.Settings.Current.LlmProviderValue != LlmProviderOption.None;
+
+        UpdateLlmFieldState(enabled);
+
+        LlmTestProgress.IsActive = true;
+        LlmTestProgress.Visibility = Visibility.Visible;
+        LlmTestMessage.Visibility = Visibility.Collapsed;
+
+        try
+        {
+            var result = await AppServices.Llm.TestConnectionAsync(
+                LlmBaseUrlBox.Text,
+                LlmModelBox.Text,
+                LlmApiKeyBox.Password);
+
+            LlmTestMessage.Text = result.IsSuccess
+                ? _strings.Get("llm_test_success")
+                : LocalizeLlmError(result.ErrorKind);
+
+            LlmTestMessage.Visibility = Visibility.Visible;
+        }
+        catch (Exception)
+        {
+            LlmTestMessage.Text = _strings.Get("llm_error_generic");
+            LlmTestMessage.Visibility = Visibility.Visible;
+        }
+        finally
+        {
+            _llmTesting = false;
+
+            UpdateLlmFieldState(enabled);
+
+            LlmTestProgress.IsActive = false;
+            LlmTestProgress.Visibility = Visibility.Collapsed;
+        }
+    }
+
+    private string LocalizeLlmError(LlmErrorKind kind) => kind switch
+    {
+        LlmErrorKind.NotConfigured => _strings.Get("llm_not_configured"),
+        LlmErrorKind.Unauthorized => _strings.Get("llm_error_unauthorized"),
+        LlmErrorKind.NotFound => _strings.Get("llm_error_not_found"),
+        LlmErrorKind.RateLimited => _strings.Get("llm_error_rate_limited"),
+        LlmErrorKind.Network => _strings.Get("llm_error_network"),
+        LlmErrorKind.Cancelled => _strings.Get("llm_error_cancelled"),
+        _ => _strings.Get("llm_error_generic"),
+    };
 
     // ------------------------------------------------------------------
     // Appearance

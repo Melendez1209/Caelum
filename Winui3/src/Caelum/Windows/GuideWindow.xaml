@@ -111,6 +111,14 @@
                 </StackPanel>
             </StackPanel>
 
+            <StackPanel x:Name="GradePanel" Spacing="8" Visibility="Collapsed">
+                <TextBlock
+                    x:Name="GradeHeading"
+                    Style="{StaticResource SubtitleTextBlockStyle}" />
+
+                <ComboBox x:Name="GradeOptions" MinWidth="200" HorizontalAlignment="Left" />
+            </StackPanel>
+
             <StackPanel x:Name="SubjectPanel" Spacing="8" Visibility="Collapsed">
                 <TextBlock
                     x:Name="SubjectHeading"
