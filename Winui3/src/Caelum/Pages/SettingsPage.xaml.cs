@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Globalization;
 using Caelum.Core.Data;
 using Caelum.Core.Domain;
 using Caelum.Core.Localization;
@@ -547,19 +546,16 @@ public sealed partial class SettingsPage
     {
         if (_suppressEvents || LanguageBox.SelectedItem is not LanguageOption option) return;
 
+        // Compare against the culture the app is actually running under, not the Windows display
+        // language. After a restart the stored language is already in effect, so switching back to
+        // the system language still changes the interface and still needs a restart.
+        var needsRestart = StringLocalizer.WouldChangeCulture(option.Tag);
+
         await AppServices.Settings.SetLanguageAsync(option.Tag);
 
-        // Switching to the system language (empty tag) or to a language that already matches the
-        // system needs no restart; only a genuinely different language requires one.
-        var selectedCulture = StringLocalizer.ResolveCulture(option.Tag);
-        var systemCulture = CultureInfo.InstalledUICulture;
-        var needsRestart = !string.Equals(
-            selectedCulture.Name, systemCulture.Name, StringComparison.OrdinalIgnoreCase);
-
-        StringLocalizer.UseLanguage(option.Tag);
-
-        // Only a genuinely different language needs a restart, so the hint and the button share
-        // the same condition instead of the hint being shown after every language change.
+        // The chosen culture is restored on the next launch by App.OpenShell. Applying it here
+        // would retranslate only pages built afterwards and leave the shell captions in the old
+        // language, so the hint and the button share the same condition instead.
         LanguageHint.Text = _strings.Get("language_restart_hint");
         LanguageHint.Visibility = needsRestart ? Visibility.Visible : Visibility.Collapsed;
         RestartButton.Visibility = needsRestart ? Visibility.Visible : Visibility.Collapsed;

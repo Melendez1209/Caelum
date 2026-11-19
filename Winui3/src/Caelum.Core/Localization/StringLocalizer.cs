@@ -159,6 +159,19 @@ public sealed class StringLocalizer
     }
 
     /// <summary>
+    ///     Checks whether applying a tag would change the culture the process is currently using.
+    ///     Callers use this to decide if a restart is needed without changing the culture: strings are
+    ///     resolved when a page is built, so switching live would only translate part of the interface.
+    /// </summary>
+    public static bool WouldChangeCulture(string? tag)
+    {
+        return !string.Equals(
+            CurrentCulture.Name,
+            ResolveCulture(tag).Name,
+            StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
     ///     Maps a stored tag onto a culture, falling back to the invariant culture when Windows has
     ///     never heard of the language.
     /// </summary>

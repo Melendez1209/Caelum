@@ -125,6 +125,47 @@ public class StringLocalizerTests
     }
 
     [Fact]
+    public void ReapplyingTheCultureAlreadyInEffectDoesNotNeedARestart()
+    {
+        using var culture = new CultureScope(StringLocalizer.ResolveCulture("en-GB"));
+
+        Assert.False(StringLocalizer.WouldChangeCulture("en-GB"));
+    }
+
+    [Fact]
+    public void SwitchingToADifferentCultureNeedsARestartWithoutChangingItLive()
+    {
+        using var culture = new CultureScope(StringLocalizer.ResolveCulture("en-GB"));
+        var before = StringLocalizer.CurrentCulture.Name;
+
+        Assert.True(StringLocalizer.WouldChangeCulture("zh-Hans"));
+        Assert.Equal(before, StringLocalizer.CurrentCulture.Name);
+    }
+
+    [Fact]
+    public void SwitchingBackToTheSystemCultureNeedsARestartWhenAnotherCultureIsInEffect()
+    {
+        var otherTag = StringLocalizer.AvailableLanguages
+            .Select(option => option.Tag)
+            .First(tag => !string.Equals(
+                StringLocalizer.ResolveCulture(tag).Name,
+                CultureInfo.InstalledUICulture.Name,
+                StringComparison.OrdinalIgnoreCase));
+
+        using var culture = new CultureScope(StringLocalizer.ResolveCulture(otherTag));
+
+        Assert.True(StringLocalizer.WouldChangeCulture(string.Empty));
+    }
+
+    [Fact]
+    public void ChoosingTheSystemCultureWhenAlreadyFollowingItDoesNotNeedARestart()
+    {
+        using var culture = new CultureScope(CultureInfo.InstalledUICulture);
+
+        Assert.False(StringLocalizer.WouldChangeCulture(string.Empty));
+    }
+
+    [Fact]
     public void FormatFillsInTheAndroidPlaceholder()
     {
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
