@@ -11,7 +11,7 @@
     <Identity
             Name="YimingGeng.2724160419C55"
             Publisher="CN=AD94850F-501E-4904-963C-53CF9C680E8F"
-            Version="1.0.3.0"/>
+            Version="1.1.0.0"/>
 
     <mp:PhoneIdentity PhoneProductId="acc12a8b-d325-4b66-b09c-68a3c0ba476a"
                       PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
