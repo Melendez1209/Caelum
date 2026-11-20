@@ -111,24 +111,16 @@ nav.scrolled {
     inset 0 0 12px rgba(255, 255, 255, 0.05);
 }
 
-nav.about-active {
+nav.about-active,
+nav.nav-compact {
     max-width: 780px;
-}
-
-nav.about-active ul {
-    position: static;
-    transform: none;
 }
 
 .logo.logo-fixed {
     position: fixed;
     z-index: 1001;
     margin: 0;
-    transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.logo.logo-about-large {
-    transform: scale(3);
+    will-change: left, top, transform, opacity;
 }
 
 .logo img {
@@ -149,11 +141,13 @@ nav ul {
     left: 50%;
     top: 50%;
     transform: translate(-50%, -50%);
+    transition: left 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     display: flex;
     list-style: none;
     gap: 2rem;
     align-items: center;
     height: 100%;
+    z-index: 1;
 }
 
 nav ul li {
@@ -184,16 +178,45 @@ nav a.active {
 
 .nav-indicator {
     position: absolute;
-    height: 3px;
-    border-radius: 999px;
-    background: var(--primary-color);
+    z-index: 0;
     left: 0;
     top: 0;
     width: 0;
+    height: 2.5rem;
+    opacity: 0;
+    border-radius: 999px;
+    background: linear-gradient(
+            135deg,
+            rgba(255, 255, 255, 0.92),
+            rgba(255, 255, 255, 0.62) 42%,
+            rgba(165, 75, 207, 0.38)
+    );
+    backdrop-filter: blur(12px) saturate(1.8) url(#liquid-glass);
+    -webkit-backdrop-filter: blur(12px) saturate(1.8) url(#liquid-glass);
+    border: 1px solid rgba(255, 255, 255, 0.85);
+    box-shadow: 0 4px 16px rgba(165, 75, 207, 0.28),
+    0 1px 3px rgba(165, 75, 207, 0.16),
+    inset 0 1px 1.5px rgba(255, 255, 255, 0.95),
+    inset 0 -1px 3px rgba(165, 75, 207, 0.15);
     pointer-events: none;
     transition: left 0.35s cubic-bezier(0.16, 1, 0.3, 1),
     top 0.35s cubic-bezier(0.16, 1, 0.3, 1),
-    width 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    width 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+    height 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.25s ease;
+}
+
+[data-theme='dark'] .nav-indicator {
+    background: linear-gradient(
+            135deg,
+            rgba(255, 255, 255, 0.16),
+            rgba(255, 255, 255, 0.05) 45%,
+            rgba(165, 75, 207, 0.22)
+    );
+    border-color: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 6px 20px var(--shadow-color),
+    inset 0 1px 1px rgba(255, 255, 255, 0.28),
+    inset 0 -1px 2px rgba(255, 255, 255, 0.08);
 }
 
 .theme-toggle,
