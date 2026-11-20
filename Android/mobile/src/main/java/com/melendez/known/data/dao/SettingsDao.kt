@@ -55,4 +55,19 @@ interface SettingsDao {
 
     @Query("UPDATE settings SET historyViewMode = :mode WHERE id = 1")
     suspend fun updateHistoryViewMode(mode: Int)
+
+    @Query("UPDATE settings SET llmProviderValue = :value WHERE id = 1")
+    suspend fun updateLlmProvider(value: Int)
+
+    @Query("UPDATE settings SET llmBaseUrl = :url WHERE id = 1")
+    suspend fun updateLlmBaseUrl(url: String)
+
+    @Query("UPDATE settings SET llmModel = :model WHERE id = 1")
+    suspend fun updateLlmModel(model: String)
+
+    @Query("UPDATE settings SET currentChatSessionId = :sessionId WHERE id = 1")
+    suspend fun updateCurrentChatSession(sessionId: Long)
+
+    @Query("UPDATE settings SET grade = :grade WHERE id = 1")
+    suspend fun updateGrade(grade: Int)
 } 

@@ -55,8 +55,12 @@ sealed class Screens : NavKey {
     @Serializable
     data class Detail(val examId: Long = 0L) : NavKey
 
+    /** Assistant chat. A non-zero [examId] links the session to that exam's scores. */
     @Serializable
-    data object Prophets : NavKey
+    data class Prophets(val examId: Long = 0L) : NavKey
+
+    @Serializable
+    data object LlmSettings : NavKey
 
     @Serializable
     data object Credits : NavKey

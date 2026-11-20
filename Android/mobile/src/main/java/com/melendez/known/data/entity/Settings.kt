@@ -22,5 +22,11 @@ data class Settings(
     val region: String = "",
     val selectedSubjects: String = "",
     // Density of the history list, one of the HistoryViewMode values
-    val historyViewMode: Int = HistoryViewMode.DEFAULT.value
+    val historyViewMode: Int = HistoryViewMode.DEFAULT.value,
+    // Assistant configuration
+    val llmProviderValue: Int = 0,
+    val llmBaseUrl: String = "",
+    val llmModel: String = "",
+    val currentChatSessionId: Long = 0L,
+    val grade: Int = 0
 ) 

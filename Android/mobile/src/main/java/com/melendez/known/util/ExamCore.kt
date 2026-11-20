@@ -205,6 +205,16 @@ fun totalFullMark(scores: List<ExamScore>): Float =
 fun percentage(mark: Float, fullMark: Float): Float =
     if (fullMark <= 0f) 0f else (mark / fullMark * 100f).coerceIn(0f, 100f)
 
+/** Average of the total marks across [exams], or `0f` when there are none. */
+fun averageMarkOf(exams: List<ExamWithTotal>): Float =
+    if (exams.isEmpty()) 0f else exams.sumOf { it.totalMark.toDouble() }.toFloat() / exams.size
+
+/** Average of the overall percentages across [exams], or `0f` when there are none. */
+fun averageRateOf(exams: List<ExamWithTotal>): Float =
+    if (exams.isEmpty()) 0f
+    else exams.sumOf { percentage(it.totalMark, it.totalFullMark).toDouble() }
+        .toFloat() / exams.size
+
 /**
  * 1-based rank of [examId] among [exams], ordered by percentage (highest first). Exams without any
  * score count as 0 % and sort last. Returns `1` for unknown or empty input rather than throwing.

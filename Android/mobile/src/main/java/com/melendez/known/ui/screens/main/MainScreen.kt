@@ -57,6 +57,7 @@ import com.melendez.known.ui.components.LocalScreenType
 import com.melendez.known.ui.components.ShareOptionsSheet
 import com.melendez.known.ui.navigation.Navigator
 import com.melendez.known.ui.navigation.rememberNavigationState
+import com.melendez.known.ui.screens.Prophets
 import com.melendez.known.ui.screens.main.inners.DeleteExamsDialog
 import com.melendez.known.ui.screens.main.inners.History
 import com.melendez.known.ui.screens.main.inners.Home
@@ -73,7 +74,7 @@ import kotlinx.coroutines.launch
 fun MainScreen(navigator: Navigator) {
 
     val screenType = LocalScreenType.current
-    val screens = listOf(Screens.Home, Screens.History, Screens.Me)
+    val screens = listOf(Screens.Home, Screens.History, Screens.Prophets, Screens.Me)
     val context = LocalContext.current
     val viewModel: ExamViewModel = viewModel()
 
@@ -298,6 +299,9 @@ fun Main_Compact(
                             selected = screen == navigationState.topLevelRoute,
                             onClick = {
                                 innerNavigator.navigate(screen)
+                                if (screen.router != Screens.History.router) {
+                                    checkedIds.clear()
+                                }
                             },
                             icon = {
                                 Icon(
@@ -373,11 +377,13 @@ fun Main_Compact(
                 }
             }
         }, floatingActionButton = {
-            FloatingActionButton(onClick = { navigator.navigate(com.melendez.known.ui.screens.Screens.DRP()) }) {
-                Icon(
-                    imageVector = Icons.Rounded.Add,
-                    contentDescription = stringResource(R.string.add)
-                )
+            if (navigationState.topLevelRoute != Screens.Prophets) {
+                FloatingActionButton(onClick = { navigator.navigate(com.melendez.known.ui.screens.Screens.DRP()) }) {
+                    Icon(
+                        imageVector = Icons.Rounded.Add,
+                        contentDescription = stringResource(R.string.add)
+                    )
+                }
             }
         }
     ) { paddings ->
@@ -392,6 +398,12 @@ fun Main_Compact(
                     paddingValues = paddings,
                     navigator = navigator,
                     checkedIds = checkedIds
+                )
+
+                Screens.Prophets -> Prophets(
+                    navigator = navigator,
+                    onBack = { innerNavigator.goBack() },
+                    contentPadding = paddings
                 )
 
                 Screens.Me -> Me(navigator)
@@ -529,14 +541,16 @@ fun Main_Medium(
                     }
                 },
                 floatingActionButton = {
-                    LargeFloatingActionButton(onClick = { navigator.navigate(com.melendez.known.ui.screens.Screens.DRP()) }) {
-                        Icon(
-                            imageVector = Icons.Rounded.Add,
-                            contentDescription = stringResource(R.string.add)
-                        )
+                    if (navigationState.topLevelRoute != Screens.Prophets) {
+                        LargeFloatingActionButton(onClick = { navigator.navigate(com.melendez.known.ui.screens.Screens.DRP()) }) {
+                            Icon(
+                                imageVector = Icons.Rounded.Add,
+                                contentDescription = stringResource(R.string.add)
+                            )
+                        }
                     }
                 }
-            ) {
+            ) { paddings ->
                 Crossfade(
                     targetState = navigationState.topLevelRoute,
                     animationSpec = tween(durationMillis = 300),
@@ -547,6 +561,12 @@ fun Main_Medium(
                         Screens.History -> History(
                             navigator = navigator,
                             checkedIds = checkedIds
+                        )
+
+                        Screens.Prophets -> Prophets(
+                            navigator = navigator,
+                            onBack = { innerNavigator.goBack() },
+                            contentPadding = paddings
                         )
 
                         Screens.Me -> Me(navigator)
@@ -660,14 +680,16 @@ fun Main_Expanded(
                     }
                 },
                 floatingActionButton = {
-                    LargeFloatingActionButton(onClick = { navigator.navigate(com.melendez.known.ui.screens.Screens.DRP()) }) {
-                        Icon(
-                            imageVector = Icons.Rounded.Add,
-                            contentDescription = stringResource(R.string.add)
-                        )
+                    if (navigationState.topLevelRoute != Screens.Prophets) {
+                        LargeFloatingActionButton(onClick = { navigator.navigate(com.melendez.known.ui.screens.Screens.DRP()) }) {
+                            Icon(
+                                imageVector = Icons.Rounded.Add,
+                                contentDescription = stringResource(R.string.add)
+                            )
+                        }
                     }
                 }
-            ) {
+            ) { paddings ->
                 Crossfade(
                     targetState = navigationState.topLevelRoute,
                     animationSpec = tween(durationMillis = 300),
@@ -678,6 +700,12 @@ fun Main_Expanded(
                         Screens.History -> History(
                             navigator = navigator,
                             checkedIds = checkedIds
+                        )
+
+                        Screens.Prophets -> Prophets(
+                            navigator = navigator,
+                            onBack = { innerNavigator.goBack() },
+                            contentPadding = paddings
                         )
 
                         Screens.Me -> Me(navigator)
@@ -692,7 +720,7 @@ fun Main_Expanded(
 @Preview(device = "id:pixel_10_pro")
 @Composable
 private fun MainScreen_Preview() {
-    val screens = listOf(Screens.Home, Screens.History, Screens.Me)
+    val screens = listOf(Screens.Home, Screens.History, Screens.Prophets, Screens.Me)
     val navigationState = rememberNavigationState(
         startRoute = Screens.Home,
         topLevelRoutes = screens.toSet()

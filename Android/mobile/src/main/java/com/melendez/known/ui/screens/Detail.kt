@@ -276,7 +276,7 @@ fun Detail(navigator: Navigator, examId: Long = 0L) {
             ) {
                 FilledIconButton(
                     modifier = Modifier.width(64.dp),
-                    onClick = { navigator.navigate(Screens.Prophets) }
+                    onClick = { navigator.navigate(Screens.Prophets(examId = examId)) }
                 ) {
                     Icon(
                         Icons.AutoMirrored.Rounded.Message,

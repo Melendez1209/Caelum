@@ -49,15 +49,16 @@ import com.melendez.known.ui.screens.add.DRP
 import com.melendez.known.ui.screens.add.Inputting
 import com.melendez.known.ui.screens.main.MainScreen
 import com.melendez.known.ui.screens.settings.General
+import com.melendez.known.ui.screens.settings.LlmSettings
 import com.melendez.known.ui.screens.settings.Settings
 import com.melendez.known.ui.screens.settings.appearance.Appearance
 import com.melendez.known.ui.screens.settings.appearance.Dark
 import com.melendez.known.ui.screens.settings.appearance.Language
 import com.melendez.known.ui.theme.DEFAULT_SEED_COLOR
 import com.melendez.known.ui.theme.KnownTheme
+import com.melendez.known.util.getUnifiedSizeClass
 import com.melendez.known.util.settings.DarkThemePreference
 import com.melendez.known.util.settings.PreferenceUtil
-import com.melendez.known.util.getUnifiedSizeClass
 
 @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
 class MainActivity : ComponentActivity() {
@@ -164,7 +165,8 @@ class MainActivity : ComponentActivity() {
                                         Screens.Language,
                                         Screens.About,
                                         Screens.Signin,
-                                        Screens.Prophets,
+                                        Screens.Prophets(),
+                                        Screens.LlmSettings,
                                         Screens.Credits,
                                         Screens.Guide
                                     )
@@ -217,8 +219,11 @@ class MainActivity : ComponentActivity() {
                                     entry<Screens.Detail> { key ->
                                         Detail(navigator = navigator, examId = key.examId)
                                     }
-                                    entry<Screens.Prophets> {
-                                        Prophets(navigator = navigator)
+                                    entry<Screens.Prophets> { key ->
+                                        Prophets(navigator = navigator, examId = key.examId)
+                                    }
+                                    entry<Screens.LlmSettings> {
+                                        LlmSettings(navigator = navigator)
                                     }
                                     entry<Screens.Credits> {
                                         Credits(navigator = navigator)
