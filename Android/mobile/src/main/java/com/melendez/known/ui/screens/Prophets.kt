@@ -3,12 +3,14 @@ package com.melendez.known.ui.screens
 import android.app.Application
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -16,6 +18,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.Send
@@ -89,17 +92,22 @@ fun Prophets(
             viewModel.dismissMessage()
         }
     }
-    // Jump to the bottom instantly whenever the conversation changes or its message count grows,
-    // so opening a session (or switching to one with the same count) lands on the latest message.
+    // Scroll to the trailing anchor rather than the last message. Scrolling to a message aligns it
+    // to the viewport top; when a streaming bubble grows taller than the screen the newest text at
+    // its bottom stays hidden. The anchor is the final item, so scrolling to it clamps the list to
+    // the absolute bottom and the latest text is always visible.
+    fun bottomAnchorIndex(): Int = uiState.messages.size
+
     LaunchedEffect(uiState.currentSessionId, uiState.messages.size) {
         if (uiState.messages.isNotEmpty()) {
-            listState.scrollToItem(uiState.messages.lastIndex)
+            listState.scrollToItem(bottomAnchorIndex())
         }
     }
-    // While a reply streams in, follow the tail with a short animation.
+    // Follow the tail on every streaming delta. scrollToItem is instant, so a new token cannot
+    // cancel the scroll the way an animation would.
     LaunchedEffect(uiState.streamingText) {
         if (uiState.isGenerating && uiState.messages.isNotEmpty()) {
-            listState.animateScrollToItem(uiState.messages.lastIndex)
+            listState.scrollToItem(bottomAnchorIndex())
         }
     }
 
@@ -177,6 +185,10 @@ fun Prophets(
                 items(uiState.messages, key = { it.id }) { message ->
                     ChatBubble(message = message)
                 }
+                // Trailing anchor: scrolling here clamps the list to the exact bottom.
+                item(key = "bottom_anchor") {
+                    Spacer(modifier = Modifier.height(1.dp))
+                }
             }
 
             ChatInputBar(
@@ -216,13 +228,13 @@ private fun ChatBubble(message: ChatMessageUi) {
         else -> MaterialTheme.colorScheme.onSurface
     }
 
-    Row(
+    BoxWithConstraints(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start
+        contentAlignment = if (isUser) Alignment.CenterEnd else Alignment.CenterStart
     ) {
         Row(
             modifier = Modifier
-                .widthIn(max = 340.dp)
+                .widthIn(max = maxWidth * 0.88f)
                 .background(containerColor, MaterialTheme.shapes.extraLarge)
                 .padding(horizontal = 14.dp, vertical = 10.dp)
         ) {
@@ -236,10 +248,20 @@ private fun ChatBubble(message: ChatMessageUi) {
                     tint = contentColor
                 )
             }
-            if (isUser || message.isStreaming) {
-                Text(text = message.content, color = contentColor)
-            } else {
-                Markdown(content = message.content, modifier = Modifier)
+            // SelectionContainer makes the bubble's text long-press selectable and copyable.
+            SelectionContainer {
+                if (isUser || message.isStreaming) {
+                    Text(text = message.content, color = contentColor)
+                } else {
+                    val cached = message.markdownState
+                    if (cached != null) {
+                        // Reuse the pre-parsed AST so scrolling the row off-screen and back does not
+                        // reparse the Markdown and stutter the list.
+                        Markdown(state = cached, modifier = Modifier)
+                    } else {
+                        Markdown(content = message.content, modifier = Modifier)
+                    }
+                }
             }
         }
     }

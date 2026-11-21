@@ -11,12 +11,16 @@ import com.melendez.known.util.llm.ExamContextBuilder
 import com.melendez.known.util.llm.LlmErrorKind
 import com.melendez.known.util.llm.LlmMessage
 import com.melendez.known.util.llm.LlmResult
+import com.mikepenz.markdown.model.State
+import com.mikepenz.markdown.model.parseMarkdown
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.coroutines.cancellation.CancellationException
 
 /**
@@ -96,6 +100,11 @@ class ProphetsViewModel(
         if (sessionId == 0L) return
         viewModelScope.launch {
             val session = deps.chatRepository.getSession(sessionId) ?: return@launch
+            if (sessionId != _uiState.value.currentSessionId) {
+                // Message ids are session-scoped in the cache; drop the previous session's ASTs.
+                markdownCache.clear()
+                parsingIds.clear()
+            }
             currentExamId = session.examId ?: 0L
             deps.settingsRepository.updateCurrentChatSession(sessionId)
             _uiState.value = _uiState.value.copy(
@@ -232,8 +241,14 @@ class ProphetsViewModel(
     }
 
     private fun renderMessages() {
-        val base = persistedMessages.map {
-            ChatMessageUi(it.id, it.role, it.content)
+        val base = persistedMessages.map { message ->
+            ChatMessageUi(
+                id = message.id,
+                role = message.role,
+                content = message.content,
+                markdownState = markdownCache[message.id]
+            )
+                .also { ensureParsed(message.id, message.role, message.content) }
         }
         val streaming = _uiState.value.streamingText
         _uiState.value = _uiState.value.copy(
@@ -248,6 +263,19 @@ class ProphetsViewModel(
                 )
             }
         )
+    }
+
+    /** Parse a non-streaming message's Markdown once and cache it for later recompositions. */
+    private fun ensureParsed(id: Long, role: String, content: String) {
+        if (role == "user" || id in parsingIds || markdownCache.containsKey(id)) return
+        parsingIds += id
+        viewModelScope.launch {
+            val state = withContext(Dispatchers.Default) { parseMarkdown(content) }
+            markdownCache[id] = state
+            parsingIds -= id
+            // Only refresh when the session is unchanged, so a stale parse cannot disturb the UI.
+            if (_uiState.value.messages.any { it.id == id }) renderMessages()
+        }
     }
 
     private suspend fun buildContext(): String {
