@@ -7,6 +7,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import okhttp3.Call
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -19,9 +20,22 @@ import kotlin.coroutines.cancellation.CancellationException
 /**
  * Talks to any OpenAI-compatible chat completion endpoint. Accepts a root URL, a `/v1` URL or a full
  * `/v1/chat/completions` URL and normalises them to the latter. Streamed replies are delivered to
- * [progress] as they arrive; a stream that breaks keeps the text received so far.
+ * `progress` as they arrive; a stream that breaks keeps the text received so far.
  */
 open class OpenAiCompatibleLlmClient(private val http: OkHttpClient = defaultClient()) {
+
+    /** The in-flight request, kept so a stop button can cancel it directly. */
+    @Volatile
+    private var activeCall: Call? = null
+
+    /**
+     * Cancels the current request immediately. Called from the stop button: blocking reads do not
+     * respond to coroutine cancellation on their own, so the underlying OkHttp call must be cancelled
+     * explicitly or the stream keeps producing tokens.
+     */
+    fun cancelActive() {
+        activeCall?.cancel()
+    }
 
     open suspend fun complete(
         baseUrl: String,
@@ -49,8 +63,8 @@ open class OpenAiCompatibleLlmClient(private val http: OkHttpClient = defaultCli
             .build()
 
         val call = http.newCall(request)
+        activeCall = call
         val job = currentCoroutineContext()[Job]
-        val cancelHandle = job?.invokeOnCompletion { call.cancel() }
         fun cancelled() = job?.isCancelled == true
         try {
             val response = call.execute()
@@ -58,15 +72,20 @@ open class OpenAiCompatibleLlmClient(private val http: OkHttpClient = defaultCli
                 if (!isSuccess(it.code)) return@withContext mapHttpError(it.code, it.message)
                 val body = it.body
                     ?: return@withContext LlmResult.failure(LlmErrorKind.UNKNOWN, "Empty response")
-                val result = if (it.header("Content-Type").orEmpty().contains("text/event-stream", true)) {
-                    readEventStream(body.charStream().buffered(), progress)
-                } else {
-                    readJson(body.string())
-                }
+                val result =
+                    if (it.header("Content-Type").orEmpty().contains("text/event-stream", true)) {
+                        readEventStream(body.charStream().buffered(), progress)
+                    } else {
+                        readJson(body.string())
+                    }
                 // A cancelled stream surfaces as an interrupted read with partial text. Report it as
                 // CANCELLED rather than a network failure so the UI can stop cleanly and keep the text.
                 if (cancelled() && !result.isSuccess) {
-                    return@withContext LlmResult.failure(LlmErrorKind.CANCELLED, "Cancelled", result.content)
+                    return@withContext LlmResult.failure(
+                        LlmErrorKind.CANCELLED,
+                        "Cancelled",
+                        result.content
+                    )
                 }
                 result
             }
@@ -85,7 +104,7 @@ open class OpenAiCompatibleLlmClient(private val http: OkHttpClient = defaultCli
                 LlmResult.failure(LlmErrorKind.UNKNOWN, e.javaClass.simpleName + ": " + e.message)
             }
         } finally {
-            cancelHandle?.dispose()
+            if (activeCall === call) activeCall = null
         }
     }
 
@@ -121,7 +140,7 @@ open class OpenAiCompatibleLlmClient(private val http: OkHttpClient = defaultCli
                 e.message ?: "Stream interrupted",
                 text.toString()
             )
-        } catch (e: CancellationException) {
+        } catch (_: CancellationException) {
             return LlmResult.failure(LlmErrorKind.CANCELLED, "Cancelled", text.toString())
         }
         return if (text.isEmpty()) {

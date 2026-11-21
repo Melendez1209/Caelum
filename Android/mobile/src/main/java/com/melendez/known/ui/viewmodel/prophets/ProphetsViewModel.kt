@@ -233,8 +233,12 @@ class ProphetsViewModel(
     }
 
     fun stop() {
+        // Cancel the coroutine first so the client sees a cancelled job, then cancel the blocking
+        // OkHttp call explicitly: a blocked read ignores coroutine cancellation and would otherwise
+        // keep producing tokens.
         generateJob?.cancel()
         generateJob = null
+        deps.llmService.cancelActive()
     }
 
     /**

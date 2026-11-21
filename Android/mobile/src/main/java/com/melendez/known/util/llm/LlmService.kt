@@ -26,6 +26,9 @@ class LlmService(
         return baseUrl.isNotBlank() && model.isNotBlank()
     }
 
+    /** Cancels the in-flight completion, e.g. when the user presses stop. */
+    fun cancelActive() = client.cancelActive()
+
     /** Stores or clears the API key. An empty value removes it. */
     fun setApiKey(apiKey: String?) {
         if (apiKey.isNullOrBlank()) secrets.delete(API_KEY_SLOT)
@@ -43,7 +46,8 @@ class LlmService(
         progress: ((String) -> Unit)? = null,
         includeSystemPrompt: Boolean = true
     ): LlmResult {
-        val settings = config.currentSettings() ?: return LlmResult.failure(LlmErrorKind.NOT_CONFIGURED)
+        val settings =
+            config.currentSettings() ?: return LlmResult.failure(LlmErrorKind.NOT_CONFIGURED)
         val option = LlmProviderOption.from(settings.llmProviderValue)
 
         if (option == LlmProviderOption.NONE) return LlmResult.failure(LlmErrorKind.NOT_CONFIGURED)
