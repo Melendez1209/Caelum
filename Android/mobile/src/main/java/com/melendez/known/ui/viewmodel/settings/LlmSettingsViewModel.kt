@@ -29,8 +29,7 @@ class LlmSettingsViewModel(application: Application) : AndroidViewModel(applicat
                 provider = option,
                 baseUrl = settings.llmBaseUrl.ifBlank { preset?.defaultBaseUrl.orEmpty() },
                 model = settings.llmModel.ifBlank { preset?.defaultModel.orEmpty() },
-                apiKey = deps.secretStore.read(LlmService.API_KEY_SLOT).orEmpty(),
-                grade = settings.grade
+                apiKey = deps.secretStore.read(LlmService.API_KEY_SLOT).orEmpty()
             )
         }
     }
@@ -57,17 +56,12 @@ class LlmSettingsViewModel(application: Application) : AndroidViewModel(applicat
         _uiState.value = _uiState.value.copy(apiKey = value, resultMessage = null)
     }
 
-    fun onGradeChange(grade: Int) {
-        _uiState.value = _uiState.value.copy(grade = grade)
-    }
-
     fun save() {
         viewModelScope.launch {
             val state = _uiState.value
             deps.settingsRepository.updateLlmProvider(state.provider.value)
             deps.settingsRepository.updateLlmBaseUrl(state.baseUrl.trim())
             deps.settingsRepository.updateLlmModel(state.model.trim())
-            deps.settingsRepository.updateGrade(state.grade)
             deps.llmService.setApiKey(state.apiKey)
             _uiState.value = _uiState.value.copy(
                 resultMessage = deps.strings.get(R.string.llm_settings_saved)

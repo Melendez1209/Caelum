@@ -168,7 +168,6 @@
     <string name="llm_exam_recent">Recent exams:</string>
     <string name="llm_exam_current">Current exam (the one this conversation is about):</string>
     <string name="llm_exam_subjects">Subjects:</string>
-    <string name="llm_settings_title">AI assistant</string>
     <string name="llm_settings_desc">Model provider, endpoint and API key</string>
     <string name="llm_provider">Model provider</string>
     <string name="llm_provider_none">None</string>

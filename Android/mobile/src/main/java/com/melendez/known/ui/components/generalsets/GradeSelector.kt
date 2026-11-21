@@ -18,7 +18,7 @@ import androidx.compose.ui.res.stringResource
 import com.melendez.known.R
 import com.melendez.known.util.llm.StudentGrade
 
-/** Dropdown for the school year, shared by onboarding, general settings and the assistant settings. */
+/** Dropdown for the school year, shared by onboarding and general settings. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GradeSelector(

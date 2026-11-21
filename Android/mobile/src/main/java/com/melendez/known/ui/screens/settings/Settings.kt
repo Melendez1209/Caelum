@@ -23,6 +23,7 @@ import com.melendez.known.R
 import com.melendez.known.ui.components.LocalScreenType
 import com.melendez.known.ui.components.SettingItem
 import com.melendez.known.ui.components.SharedTopBar
+import com.melendez.known.ui.navigation.NavigationState
 import com.melendez.known.ui.navigation.Navigator
 import com.melendez.known.ui.screens.Screens
 import com.melendez.known.util.clearCache
@@ -74,7 +75,7 @@ private fun SettingsContent(modifier: Modifier, navigator: Navigator) {
         }
         item {
             SettingItem(
-                title = stringResource(id = R.string.llm_settings_title),
+                title = stringResource(id = R.string.prophets),
                 description = stringResource(id = R.string.llm_settings_desc),
                 icon = Icons.Rounded.SmartToy,
             ) {
@@ -108,7 +109,7 @@ private fun SettingsContent(modifier: Modifier, navigator: Navigator) {
 @Composable
 private fun SettingsPreview() {
     val navigationState = remember {
-        com.melendez.known.ui.navigation.NavigationState(
+        NavigationState(
             startRoute = Screens.Main,
             topLevelRoute = mutableStateOf(Screens.Main),
             backStacks = emptyMap()

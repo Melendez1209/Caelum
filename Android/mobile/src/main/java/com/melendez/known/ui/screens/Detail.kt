@@ -16,13 +16,13 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.automirrored.rounded.Message
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.Print
 import androidx.compose.material.icons.rounded.Share
+import androidx.compose.material.icons.rounded.SmartToy
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomAppBarDefaults
 import androidx.compose.material3.Button
@@ -279,7 +279,7 @@ fun Detail(navigator: Navigator, examId: Long = 0L) {
                     onClick = { navigator.navigate(Screens.Prophets(examId = examId)) }
                 ) {
                     Icon(
-                        Icons.AutoMirrored.Rounded.Message,
+                        Icons.Rounded.SmartToy,
                         stringResource(R.string.prophets)
                     )
                 }

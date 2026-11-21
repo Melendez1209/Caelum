@@ -37,7 +37,6 @@ import com.melendez.known.R
 import com.melendez.known.ui.components.LocalScreenType
 import com.melendez.known.ui.components.PreferenceSubtitle
 import com.melendez.known.ui.components.SharedTopBar
-import com.melendez.known.ui.components.generalsets.GradeSelector
 import com.melendez.known.ui.navigation.Navigator
 import com.melendez.known.ui.viewmodel.settings.LlmSettingsViewModel
 import com.melendez.known.util.llm.LlmProviderOption
@@ -58,7 +57,7 @@ fun LlmSettings(navigator: Navigator) {
 
     Column {
         SharedTopBar(
-            title = stringResource(R.string.llm_settings_title),
+            title = stringResource(R.string.prophets),
             screenType = screenType,
             navController = navigator,
             scrollBehavior = scrollBehavior
@@ -120,15 +119,6 @@ fun LlmSettings(navigator: Navigator) {
 
             item { PreferenceSubtitle(text = stringResource(R.string.llm_api_key)) }
             item { ApiKeyField(value = uiState.apiKey, onValueChange = viewModel::onApiKeyChange) }
-
-            item { PreferenceSubtitle(text = stringResource(R.string.grade)) }
-            item {
-                GradeSelector(
-                    selected = uiState.grade,
-                    onSelect = viewModel::onGradeChange,
-                    modifier = Modifier.padding(horizontal = 16.dp)
-                )
-            }
 
             item {
                 Row(modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp)) {

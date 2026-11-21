@@ -7,7 +7,6 @@ data class LlmSettingsUiState(
     val baseUrl: String = "",
     val model: String = "",
     val apiKey: String = "",
-    val grade: Int = 0,
     val isTesting: Boolean = false,
     val resultMessage: String? = null
 )

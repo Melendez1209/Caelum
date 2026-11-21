@@ -168,7 +168,6 @@
     <string name="llm_exam_recent">最近考试：</string>
     <string name="llm_exam_current">当前考试（本次对话所针对的考试）：</string>
     <string name="llm_exam_subjects">科目成绩：</string>
-    <string name="llm_settings_title">AI 助手</string>
     <string name="llm_settings_desc">模型提供商、接口地址与 API 密钥</string>
     <string name="llm_provider">模型提供商</string>
     <string name="llm_provider_none">未设置</string>
