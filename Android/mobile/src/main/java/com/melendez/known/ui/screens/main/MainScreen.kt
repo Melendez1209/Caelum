@@ -403,7 +403,8 @@ fun Main_Compact(
                 Screens.Prophets -> Prophets(
                     navigator = navigator,
                     onBack = { innerNavigator.goBack() },
-                    contentPadding = paddings
+                    contentPadding = paddings,
+                    showBackButton = false
                 )
 
                 Screens.Me -> Me(navigator)
@@ -566,7 +567,8 @@ fun Main_Medium(
                         Screens.Prophets -> Prophets(
                             navigator = navigator,
                             onBack = { innerNavigator.goBack() },
-                            contentPadding = paddings
+                            contentPadding = paddings,
+                            showBackButton = false
                         )
 
                         Screens.Me -> Me(navigator)
@@ -705,7 +707,8 @@ fun Main_Expanded(
                         Screens.Prophets -> Prophets(
                             navigator = navigator,
                             onBack = { innerNavigator.goBack() },
-                            contentPadding = paddings
+                            contentPadding = paddings,
+                            showBackButton = false
                         )
 
                         Screens.Me -> Me(navigator)

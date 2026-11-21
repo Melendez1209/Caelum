@@ -68,7 +68,8 @@ fun Prophets(
     navigator: Navigator,
     examId: Long = 0L,
     onBack: () -> Unit = { navigator.goBack() },
-    contentPadding: PaddingValues = PaddingValues()
+    contentPadding: PaddingValues = PaddingValues(),
+    showBackButton: Boolean = true
 ) {
     val application = LocalContext.current.applicationContext as Application
     val factory = object : ViewModelProvider.Factory {
@@ -88,8 +89,16 @@ fun Prophets(
             viewModel.dismissMessage()
         }
     }
-    LaunchedEffect(uiState.messages.size, uiState.streamingText) {
+    // Jump to the bottom instantly whenever the conversation changes or its message count grows,
+    // so opening a session (or switching to one with the same count) lands on the latest message.
+    LaunchedEffect(uiState.currentSessionId, uiState.messages.size) {
         if (uiState.messages.isNotEmpty()) {
+            listState.scrollToItem(uiState.messages.lastIndex)
+        }
+    }
+    // While a reply streams in, follow the tail with a short animation.
+    LaunchedEffect(uiState.streamingText) {
+        if (uiState.isGenerating && uiState.messages.isNotEmpty()) {
             listState.animateScrollToItem(uiState.messages.lastIndex)
         }
     }
@@ -103,11 +112,13 @@ fun Prophets(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                            contentDescription = stringResource(R.string.back)
-                        )
+                    if (showBackButton) {
+                        IconButton(onClick = onBack) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                                contentDescription = stringResource(R.string.back)
+                            )
+                        }
                     }
                 },
                 actions = {

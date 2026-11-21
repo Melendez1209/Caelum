@@ -49,25 +49,41 @@ open class OpenAiCompatibleLlmClient(private val http: OkHttpClient = defaultCli
             .build()
 
         val call = http.newCall(request)
-        val cancelHandle = currentCoroutineContext()[Job]?.invokeOnCompletion { call.cancel() }
+        val job = currentCoroutineContext()[Job]
+        val cancelHandle = job?.invokeOnCompletion { call.cancel() }
+        fun cancelled() = job?.isCancelled == true
         try {
             val response = call.execute()
             response.use {
                 if (!isSuccess(it.code)) return@withContext mapHttpError(it.code, it.message)
                 val body = it.body
                     ?: return@withContext LlmResult.failure(LlmErrorKind.UNKNOWN, "Empty response")
-                if (it.header("Content-Type").orEmpty().contains("text/event-stream", true)) {
+                val result = if (it.header("Content-Type").orEmpty().contains("text/event-stream", true)) {
                     readEventStream(body.charStream().buffered(), progress)
                 } else {
                     readJson(body.string())
                 }
+                // A cancelled stream surfaces as an interrupted read with partial text. Report it as
+                // CANCELLED rather than a network failure so the UI can stop cleanly and keep the text.
+                if (cancelled() && !result.isSuccess) {
+                    return@withContext LlmResult.failure(LlmErrorKind.CANCELLED, "Cancelled", result.content)
+                }
+                result
             }
         } catch (e: CancellationException) {
             throw e
         } catch (e: IOException) {
-            LlmResult.failure(LlmErrorKind.NETWORK, e.message ?: "Network error")
+            if (cancelled()) {
+                LlmResult.failure(LlmErrorKind.CANCELLED, "Cancelled")
+            } else {
+                LlmResult.failure(LlmErrorKind.NETWORK, e.message ?: "Network error")
+            }
         } catch (e: Exception) {
-            LlmResult.failure(LlmErrorKind.UNKNOWN, e.javaClass.simpleName + ": " + e.message)
+            if (cancelled()) {
+                LlmResult.failure(LlmErrorKind.CANCELLED, "Cancelled")
+            } else {
+                LlmResult.failure(LlmErrorKind.UNKNOWN, e.javaClass.simpleName + ": " + e.message)
+            }
         } finally {
             cancelHandle?.dispose()
         }

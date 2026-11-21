@@ -36,7 +36,6 @@ class ProphetsViewModel(
     private var generateJob: Job? = null
     private var persistedMessages: List<ChatMessage> = emptyList()
     private var currentExamId: Long = 0L
-    private val errorIds = mutableSetOf<Long>()
 
     init {
         viewModelScope.launch {
@@ -161,7 +160,10 @@ class ProphetsViewModel(
 
                 val history = deps.chatRepository.getMessagesSync(sessionId)
                     .map { LlmMessage(it.role, it.content) }
-                val context = if (isFirst) buildContext() else null
+                // Rebuild the exam context on every turn, not just the first one. Conversation
+                // history only carries user/assistant text, so without this the model loses all
+                // score data as soon as the student asks a follow-up question.
+                val context = buildContext()
 
                 val result = deps.llmService.complete(
                     history = history,
@@ -178,15 +180,16 @@ class ProphetsViewModel(
                 _uiState.value = _uiState.value.copy(streamingText = null)
                 renderMessages()
 
-                if (!result.isSuccess) {
+                val cancelled = result.errorKind == LlmErrorKind.CANCELLED
+                if (!result.isSuccess && !cancelled) {
                     _uiState.value = _uiState.value.copy(message = messageFor(result))
                 }
 
-                // Only persist real model output. A failure with no partial answer is surfaced via
-                // the snackbar above and must not leave an error text bubble in the transcript.
+                // Only persist real model output. A plain failure with no partial answer is surfaced
+                // via the snackbar and must not leave an error bubble in the transcript. A cancelled
+                // stream keeps whatever arrived, shown as a normal (not red) bubble.
                 if (result.content.isNotEmpty()) {
-                    val messageId = deps.chatRepository.addMessage(sessionId, "assistant", result.content)
-                    if (!result.isSuccess) errorIds += messageId
+                    deps.chatRepository.addMessage(sessionId, "assistant", result.content)
                     deps.chatRepository.touchSession(sessionId)
                 }
 
@@ -230,7 +233,7 @@ class ProphetsViewModel(
 
     private fun renderMessages() {
         val base = persistedMessages.map {
-            ChatMessageUi(it.id, it.role, it.content, isError = it.id in errorIds)
+            ChatMessageUi(it.id, it.role, it.content)
         }
         val streaming = _uiState.value.streamingText
         _uiState.value = _uiState.value.copy(
