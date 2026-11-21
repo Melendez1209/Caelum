@@ -17,6 +17,9 @@ class ChatRepository(private val database: AppDatabase) {
 
     val sessions: Flow<List<ChatSession>> = chatDao.getSessions()
 
+    /** Sessions whose title contains [query]. */
+    fun searchSessions(query: String): Flow<List<ChatSession>> = chatDao.searchSessions(query)
+
     fun messages(sessionId: Long): Flow<List<ChatMessage>> = chatDao.getMessages(sessionId)
 
     suspend fun getSession(sessionId: Long): ChatSession? = chatDao.getSession(sessionId)

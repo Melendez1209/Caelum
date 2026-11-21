@@ -14,6 +14,15 @@ interface ChatDao {
     @Query("SELECT * FROM chat_sessions ORDER BY updatedAt DESC")
     fun getSessions(): Flow<List<ChatSession>>
 
+    @Query(
+        """
+        SELECT * FROM chat_sessions
+        WHERE title LIKE '%' || :query || '%'
+        ORDER BY updatedAt DESC
+        """
+    )
+    fun searchSessions(query: String): Flow<List<ChatSession>>
+
     @Query("SELECT * FROM chat_sessions WHERE id = :sessionId")
     suspend fun getSession(sessionId: Long): ChatSession?
 
