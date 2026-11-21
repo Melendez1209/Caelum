@@ -1,5 +1,6 @@
 package com.melendez.known.ui.components.generalsets
 
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
@@ -40,6 +41,7 @@ fun GradeSelector(
             label = { Text(text = stringResource(R.string.grade)) },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
             modifier = modifier
+                .fillMaxWidth()
                 .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true)
         )
         ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
