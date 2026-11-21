@@ -38,8 +38,13 @@ class ProphetsViewModel(
 
     private var messagesJob: Job? = null
     private var generateJob: Job? = null
+    private var titleJob: Job? = null
     private var persistedMessages: List<ChatMessage> = emptyList()
     private var currentExamId: Long = 0L
+
+    /** Parsed Markdown ASTs keyed by message id, reused when a scrolled-off row is recomposed. */
+    private val markdownCache = mutableMapOf<Long, State>()
+    private val parsingIds = mutableSetOf<Long>()
 
     init {
         viewModelScope.launch {
@@ -195,16 +200,18 @@ class ProphetsViewModel(
                 }
 
                 // Only persist real model output. A plain failure with no partial answer is surfaced
-                // via the snackbar and must not leave an error bubble in the transcript. A cancelled
+                // via the Snackbar and must not leave an error bubble in the transcript. A cancelled
                 // stream keeps whatever arrived, shown as a normal (not red) bubble.
                 if (result.content.isNotEmpty()) {
                     deps.chatRepository.addMessage(sessionId, "assistant", result.content)
                     deps.chatRepository.touchSession(sessionId)
                 }
 
-                if (isFirst && result.isSuccess) {
-                    val title = deps.llmService.generateTitle(text)
-                    deps.chatRepository.renameSession(sessionId, title.ifBlank { text.take(40) })
+                // Generate the title in its own coroutine so it is never cancelled by "stop" and
+                // never blocks the reply. Only attempt it on the first successful answer of a
+                // session that still has no title.
+                if (result.isSuccess) {
+                    maybeGenerateTitle(sessionId)
                 }
             } catch (e: CancellationException) {
                 val partial = _uiState.value.streamingText
@@ -228,6 +235,35 @@ class ProphetsViewModel(
     fun stop() {
         generateJob?.cancel()
         generateJob = null
+    }
+
+    /**
+     * Generates a title once, on the first successful reply of an untitled session. Runs separately
+     * from the reply job so a later "stop" cannot cancel it, and falls back to the first user's
+     * message when the model is unavailable.
+     */
+    private fun maybeGenerateTitle(sessionId: Long) {
+        titleJob?.cancel()
+        titleJob = viewModelScope.launch {
+            val session = deps.chatRepository.getSession(sessionId) ?: return@launch
+            if (session.title.isNotBlank()) return@launch
+
+            val firstUserMessage = deps.chatRepository.getMessagesSync(sessionId)
+                .firstOrNull { it.role == "user" }
+            val seed = firstUserMessage?.content ?: return@launch
+
+            val generated = try {
+                deps.llmService.generateTitle(seed)
+            } catch (e: Exception) {
+                ""
+            }
+            val title = generated.ifBlank { seed.take(40) }
+
+            deps.chatRepository.renameSession(sessionId, title)
+            if (sessionId == _uiState.value.currentSessionId) {
+                _uiState.value = _uiState.value.copy(currentTitle = title)
+            }
+        }
     }
 
     private fun observeMessages(sessionId: Long) {
