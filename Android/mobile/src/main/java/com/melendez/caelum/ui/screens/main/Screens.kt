@@ -5,9 +5,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.SmartToy
 import androidx.compose.material.icons.rounded.AccountCircle
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Home
+import androidx.compose.material.icons.rounded.SmartToy
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation3.runtime.NavKey
 import com.melendez.caelum.R
@@ -33,6 +35,13 @@ sealed class Screens(
         Screens("history", R.string.history) {
         override val iconSelected: ImageVector = Icons.Rounded.History
         override val iconUnelected: ImageVector = Icons.Outlined.History
+    }
+
+    @Serializable
+    data object Prophets :
+        Screens("prophets", R.string.prophets) {
+        override val iconSelected: ImageVector = Icons.Rounded.SmartToy
+        override val iconUnelected: ImageVector = Icons.Outlined.SmartToy
     }
 
     @Serializable

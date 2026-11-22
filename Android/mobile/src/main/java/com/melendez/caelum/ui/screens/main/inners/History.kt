@@ -38,6 +38,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.Forum
 import androidx.compose.material.icons.rounded.School
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.AlertDialog
@@ -88,6 +89,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.melendez.caelum.R
+import com.melendez.caelum.data.entity.ChatSession
 import com.melendez.caelum.data.entity.ExamWithTotal
 import com.melendez.caelum.svg.DynamicColorImageVectors
 import com.melendez.caelum.svg.drawablevectors.download
@@ -95,6 +97,7 @@ import com.melendez.caelum.ui.navigation.NavigationState
 import com.melendez.caelum.ui.navigation.Navigator
 import com.melendez.caelum.ui.screens.Screens
 import com.melendez.caelum.ui.viewmodel.ExamViewModel
+import com.melendez.caelum.ui.viewmodel.prophets.ChatSearchViewModel
 import com.melendez.caelum.util.HistoryViewMode
 import com.melendez.caelum.util.formatDateRange
 import com.melendez.caelum.util.formatScoreInput
@@ -125,6 +128,8 @@ fun History(
 ) {
     val viewModel: ExamViewModel = viewModel()
     val preferenceUtil: PreferenceUtil = viewModel()
+    val chatViewModel: ChatSearchViewModel = viewModel()
+    val coroutineScope = rememberCoroutineScope()
 
     val storedSettings by preferenceUtil.settings.collectAsStateWithLifecycle(initialValue = null)
     val viewMode = HistoryViewMode.fromValue(
@@ -141,8 +146,12 @@ fun History(
         if (key.isBlank()) viewModel.exams else viewModel.search(key.trim())
     }.collectAsStateWithLifecycle(initialValue = null)
     val exams: List<ExamWithTotal> = examsResult.orEmpty()
+    val sessionsResult by remember(key, refreshTick) {
+        if (key.isBlank()) chatViewModel.sessions else chatViewModel.search(key.trim())
+    }.collectAsStateWithLifecycle(initialValue = null)
+    val sessions: List<ChatSession> = sessionsResult.orEmpty()
     // Either this subscription has yet to deliver anything, or the user has just pulled
-    val loading = examsResult == null || isRefreshing
+    val loading = examsResult == null || sessionsResult == null || isRefreshing
 
     // A refreshed subscription emits as soon as its query returns. The timeout only guarantees the
     // indicator cannot stick when those rows come back identical to the ones already shown.
@@ -248,7 +257,18 @@ fun History(
                     }
                 ) {
                     LazyColumn(modifier = Modifier.fillMaxWidth()) {
-                        itemsIndexed(exams, key = { _, item -> item.exam.id }) { index, item ->
+                        if (exams.isNotEmpty()) {
+                            item {
+                                Text(
+                                    text = stringResource(R.string.exam),
+                                    style = MaterialTheme.typography.labelLarge,
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                                )
+                            }
+                        }
+                        itemsIndexed(
+                            exams,
+                            key = { _, item -> "exam-${item.exam.id}" }) { index, item ->
                             ListItem(
                                 headlineContent = { Text(item.exam.name) },
                                 supportingContent = {
@@ -274,6 +294,40 @@ fun History(
                                 }
                             )
                             if (index != exams.lastIndex) {
+                                HorizontalDivider()
+                            }
+                        }
+                        if (sessions.isNotEmpty()) {
+                            item {
+                                Text(
+                                    text = stringResource(R.string.llm_sessions),
+                                    style = MaterialTheme.typography.labelLarge,
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                                )
+                            }
+                        }
+                        itemsIndexed(
+                            sessions,
+                            key = { _, item -> "session-${item.id}" }) { index, item ->
+                            ListItem(
+                                headlineContent = {
+                                    Text(item.title.ifBlank { stringResource(R.string.llm_new_session) })
+                                },
+                                modifier = Modifier.clickable {
+                                    active = false
+                                    coroutineScope.launch {
+                                        chatViewModel.selectSession(item.id)
+                                        navigator.navigate(Screens.Prophets())
+                                    }
+                                },
+                                leadingContent = {
+                                    Icon(
+                                        Icons.Rounded.Forum,
+                                        contentDescription = null
+                                    )
+                                }
+                            )
+                            if (index != sessions.lastIndex) {
                                 HorizontalDivider()
                             }
                         }

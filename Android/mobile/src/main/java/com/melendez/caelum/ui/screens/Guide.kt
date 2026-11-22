@@ -1,6 +1,5 @@
 package com.melendez.caelum.ui.screens
 
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -40,25 +39,25 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.melendez.caelum.R
+import com.melendez.caelum.ui.components.generalsets.GradeSelector
 import com.melendez.caelum.ui.components.generalsets.IdentitySelector
 import com.melendez.caelum.ui.components.generalsets.RegionField
 import com.melendez.caelum.ui.components.generalsets.SubjectSelector
 import com.melendez.caelum.ui.navigation.Navigator
+import com.melendez.caelum.util.llm.StudentGrade
 import com.melendez.caelum.util.settings.Identity
 import com.melendez.caelum.util.settings.PreferenceUtil
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun Guide(
-    navigator: Navigator
-) {
+fun Guide(navigator: Navigator) {
     var selectedIdentity by remember { mutableIntStateOf(Identity.STUDENT) }
+    var selectedGrade by remember { mutableIntStateOf(StudentGrade.NONE) }
     var region by remember { mutableStateOf("") }
     val selectedSubjects = remember { mutableStateOf(setOf<String>()) }
     val preferenceUtil: PreferenceUtil = viewModel()
 
-    val pagerState = rememberPagerState { 3 }
+    val pagerState = rememberPagerState { 4 }
     val coroutineScope = rememberCoroutineScope()
 
     Column(
@@ -84,15 +83,12 @@ fun Guide(
             textAlign = TextAlign.Center
         )
 
-        Spacer(modifier = Modifier.height(8.dp))
-
         Text(
             text = stringResource(R.string.slogan),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
         )
-
         Spacer(modifier = Modifier.height(32.dp))
 
         HorizontalPager(
@@ -112,13 +108,15 @@ fun Guide(
                 }
 
                 2 -> SubjectSelection(selectedSubjects)
+
+                3 -> GradeSelection(selected = selectedGrade) { selectedGrade = it }
             }
         }
 
         // 页面指示器
         PagerIndicator(
             currentPage = pagerState.currentPage,
-            pageCount = 3,
+            pageCount = 4,
             modifier = Modifier.padding(16.dp)
         )
 
@@ -140,6 +138,7 @@ fun Guide(
                         persistOnboarding(
                             preferenceUtil,
                             selectedIdentity,
+                            selectedGrade,
                             region,
                             selectedSubjects.value
                         )
@@ -156,7 +155,7 @@ fun Guide(
 
             Button(
                 onClick = {
-                    if (pagerState.currentPage < 2) {
+                    if (pagerState.currentPage < 3) {
                         coroutineScope.launch {
                             pagerState.animateScrollToPage(pagerState.currentPage + 1)
                         }
@@ -166,6 +165,7 @@ fun Guide(
                         persistOnboarding(
                             preferenceUtil,
                             selectedIdentity,
+                            selectedGrade,
                             region,
                             selectedSubjects.value
                         )
@@ -174,7 +174,7 @@ fun Guide(
                 }
             ) {
                 Text(
-                    text = if (pagerState.currentPage == 2) stringResource(R.string.get_started) else stringResource(
+                    text = if (pagerState.currentPage == 3) stringResource(R.string.get_started) else stringResource(
                         R.string.next
                     )
                 )
@@ -314,13 +314,44 @@ fun SubjectSelection(selectedSubjects: androidx.compose.runtime.MutableState<Set
     }
 }
 
+@Composable
+fun GradeSelection(
+    selected: Int,
+    onGradeSelected: (Int) -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(8.dp),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState()),
+        ) {
+            Text(
+                text = stringResource(R.string.onboarding_grade),
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+
+            GradeSelector(selected = selected, onSelect = onGradeSelected)
+        }
+    }
+}
+
 private fun persistOnboarding(
     preferenceUtil: PreferenceUtil,
     identity: Int,
+    grade: Int,
     region: String,
     selectedSubjects: Set<String>
 ) {
     preferenceUtil.updateIdentity(identity)
+    preferenceUtil.updateGrade(grade)
     preferenceUtil.updateRegion(region)
     preferenceUtil.updateSelectedSubjects(selectedSubjects)
 }

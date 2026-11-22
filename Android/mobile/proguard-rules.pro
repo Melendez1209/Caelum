@@ -1,3 +1,3 @@
 -renamesourcefileattribute SourceFile
 -optimizationpasses 5
--keep class com.melendez.known.* # Maintain only first class names
+-keep class com.melendez.caelum.* # Maintain only first class names

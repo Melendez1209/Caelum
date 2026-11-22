@@ -7,6 +7,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.SettingsApplications
+import androidx.compose.material.icons.rounded.SmartToy
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -22,6 +23,7 @@ import com.melendez.caelum.R
 import com.melendez.caelum.ui.components.LocalScreenType
 import com.melendez.caelum.ui.components.SettingItem
 import com.melendez.caelum.ui.components.SharedTopBar
+import com.melendez.caelum.ui.navigation.NavigationState
 import com.melendez.caelum.ui.navigation.Navigator
 import com.melendez.caelum.ui.screens.Screens
 import com.melendez.caelum.util.clearCache
@@ -72,9 +74,19 @@ private fun SettingsContent(modifier: Modifier, navigator: Navigator) {
             }
         }
         item {
+            SettingItem(
+                title = stringResource(id = R.string.prophets),
+                description = stringResource(id = R.string.llm_settings_desc),
+                icon = Icons.Rounded.SmartToy,
+            ) {
+                navigator.navigate(Screens.LlmSettings)
+            }
+        }
+        item {
             val context = LocalContext.current
             var cacheCleared by remember { mutableStateOf(false) }
-            val cacheSize = remember(cacheCleared) { if (cacheCleared) 0L else getCacheSize(context) }
+            val cacheSize =
+                remember(cacheCleared) { if (cacheCleared) 0L else getCacheSize(context) }
             val cacheFreedFormat = stringResource(R.string.cache_freed)
             SettingItem(
                 title = stringResource(id = R.string.clear_cache),
@@ -97,7 +109,7 @@ private fun SettingsContent(modifier: Modifier, navigator: Navigator) {
 @Composable
 private fun SettingsPreview() {
     val navigationState = remember {
-        com.melendez.caelum.ui.navigation.NavigationState(
+        NavigationState(
             startRoute = Screens.Main,
             topLevelRoute = mutableStateOf(Screens.Main),
             backStacks = emptyMap()
