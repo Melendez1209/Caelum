@@ -229,28 +229,43 @@ document.addEventListener('DOMContentLoaded', () => {
     const navRect = nav.getBoundingClientRect();
     const linkRect = activeLink.getBoundingClientRect();
     navIndicator.style.opacity = '1';
-    navIndicator.style.left = linkRect.left - navRect.left + 'px';
-    navIndicator.style.top = linkRect.bottom - navRect.top + 6 + 'px';
-    navIndicator.style.width = linkRect.width + 'px';
+    navIndicator.style.left = linkRect.left - navRect.left - 10 + 'px';
+    navIndicator.style.top = linkRect.top - navRect.top - 4 + 'px';
+    navIndicator.style.width = linkRect.width + 20 + 'px';
+    navIndicator.style.height = linkRect.height + 8 + 'px';
   }
 
-  // ===== Floating Logo: Fly to About description =====
+  // ===== Scrollytelling Logo: hero background -> nav -> About =====
+  const homeSection = document.getElementById('home');
+  const featuresSection = document.getElementById('features');
   const aboutSection = document.getElementById('about');
   const aboutLogoColumn =
     aboutSection && aboutSection.querySelector('.about-logo-column');
   const aboutContent =
     aboutSection && aboutSection.querySelector('.about-content');
   const logo = document.querySelector('.logo');
+  const navUl = nav.querySelector('ul');
   const LOGO_FLY_DURATION = 600;
-  let logoFlying = false;
-  let logoTrackReady = false;
+  const HERO_LOGO_SCALE = 10;
+  const ABOUT_LOGO_SCALE = 3;
+  const HERO_LOGO_OPACITY = 0.4;
+  // Mirror the nav max-width values in css/index.css for scroll-linked scrubbing
+  const NAV_MAX_WIDE = 1100;
+  const NAV_MAX_COMPACT = 780;
+  const clamp01 = (value) => Math.min(1, Math.max(0, value));
+  const lerp = (from, to, t) => from + (to - from) * t;
+  const LOGO_STATE = { HERO: 'hero', NAV: 'nav', ABOUT: 'about' };
+  let logoState = LOGO_STATE.NAV;
+  let logoCurrent = null;
+  let logoAnimating = false;
+  let pendingLogoState = null;
   const isNarrowScreen = () => window.matchMedia('(max-width: 768px)').matches;
 
-  function isAboutActive() {
-    if (!aboutSection) return false;
+  function isSectionActive(section) {
+    if (!section) return false;
     const scrollY = window.scrollY + 100;
-    const top = aboutSection.offsetTop;
-    return scrollY >= top && scrollY < top + aboutSection.offsetHeight;
+    const top = section.offsetTop;
+    return scrollY >= top && scrollY < top + section.offsetHeight;
   }
 
   function aboutTargetViewport() {
@@ -262,109 +277,326 @@ document.addEventListener('DOMContentLoaded', () => {
     };
   }
 
+  // The links are always absolutely positioned: "compact" pins them to the
+  // left padding, "wide" centres them in the viewport
+  function navUlCompactLeft() {
+    const padLeft = parseFloat(getComputedStyle(nav).paddingLeft) || 0;
+    return padLeft + navUl.offsetWidth / 2;
+  }
+
+  function navUlWideLeft() {
+    return nav.getBoundingClientRect().width / 2;
+  }
+
+  // Measure the expanded nav slot without a visual flash or a width tween
   function logoSlotViewport() {
+    const wasCompact = nav.classList.contains('nav-compact');
+    const prevTransition = nav.style.transition;
+    const prevMaxWidth = nav.style.maxWidth;
+    nav.style.transition = 'none';
+    nav.style.maxWidth = '';
+    nav.classList.remove('nav-compact');
     const navRect = nav.getBoundingClientRect();
     const padLeft = parseFloat(getComputedStyle(nav).paddingLeft) || 0;
-    return {
+    const slot = {
       left: navRect.left + padLeft,
       top: navRect.top + (navRect.height - logo.offsetHeight) / 2,
     };
+    nav.classList.toggle('nav-compact', wasCompact);
+    nav.style.maxWidth = prevMaxWidth;
+    nav.style.transition = prevTransition;
+    return slot;
+  }
+
+  function heroTargetViewport() {
+    return {
+      left: (window.innerWidth - logo.offsetWidth) / 2,
+      top: (window.innerHeight - logo.offsetHeight) / 2,
+      scale: HERO_LOGO_SCALE,
+      opacity: HERO_LOGO_OPACITY,
+      zIndex: 1,
+      pointerEvents: 'none',
+    };
+  }
+
+  function targetFor(state) {
+    if (state === LOGO_STATE.HERO) return heroTargetViewport();
+    if (state === LOGO_STATE.ABOUT) {
+      return {
+        ...aboutTargetViewport(),
+        scale: ABOUT_LOGO_SCALE,
+        opacity: 1,
+        zIndex: 1001,
+        pointerEvents: 'auto',
+      };
+    }
+    return {
+      ...logoSlotViewport(),
+      scale: 1,
+      opacity: 1,
+      zIndex: 1001,
+      pointerEvents: 'auto',
+    };
+  }
+
+  function applyLogoTarget(target) {
+    logo.style.left = target.left + 'px';
+    logo.style.top = target.top + 'px';
+    logo.style.transform = `scale(${target.scale})`;
+    logo.style.opacity = String(target.opacity);
+    logo.style.zIndex = String(target.zIndex);
+    logo.style.pointerEvents = target.pointerEvents;
+    logoCurrent = { ...target };
   }
 
   function cancelLogoAnimations() {
     logo.getAnimations().forEach((anim) => anim.cancel());
   }
 
-  function flyLogoToAbout() {
-    if (!logo || logoFlying) return;
+  function setNavCompact(compact) {
+    nav.classList.toggle('nav-compact', compact);
+  }
+
+  function resetLogoToNav() {
     cancelLogoAnimations();
-    logoFlying = true;
-    logoTrackReady = false;
-    nav.classList.add('about-active');
-    document.body.appendChild(logo);
-    logo.classList.add('logo-fixed');
-    logo.classList.add('logo-about-large');
+    if (logo.parentNode !== nav) nav.prepend(logo);
+    logo.classList.remove('logo-fixed');
+    logo.style.left = '';
+    logo.style.top = '';
+    logo.style.transform = '';
+    logo.style.opacity = '';
+    logo.style.zIndex = '';
+    logo.style.pointerEvents = '';
+    nav.style.maxWidth = '';
+    nav.style.transition = '';
+    navUl.style.left = '';
+    navUl.style.transition = '';
+    setNavCompact(false);
+    logoState = LOGO_STATE.NAV;
+    logoCurrent = null;
+    logoAnimating = false;
+  }
+
+  function completeTransition(state) {
+    if (state === LOGO_STATE.NAV) {
+      resetLogoToNav();
+    } else {
+      applyLogoTarget(targetFor(state));
+      logoState = state;
+      logoAnimating = false;
+    }
+    if (pendingLogoState && pendingLogoState !== logoState) {
+      const next = pendingLogoState;
+      pendingLogoState = null;
+      moveLogoTo(next);
+    } else {
+      pendingLogoState = null;
+    }
+  }
+
+  function animateLogo(from, to, onDone) {
+    cancelLogoAnimations();
+    const anim = logo.animate(
+      [
+        {
+          left: from.left + 'px',
+          top: from.top + 'px',
+          transform: `scale(${from.scale})`,
+          opacity: String(from.opacity),
+        },
+        {
+          left: to.left + 'px',
+          top: to.top + 'px',
+          transform: `scale(${to.scale})`,
+          opacity: String(to.opacity),
+        },
+      ],
+      {
+        duration: LOGO_FLY_DURATION,
+        easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
+        fill: 'both',
+      },
+    );
+    anim.onfinish = () => {
+      anim.cancel();
+      onDone();
+    };
+  }
+
+  function moveLogoTo(state, instant = false) {
+    if (!logo || state === logoState) return;
+    if (isNarrowScreen()) {
+      if (logoState !== LOGO_STATE.NAV) resetLogoToNav();
+      return;
+    }
+    if (logoAnimating && !instant) {
+      pendingLogoState = state;
+      return;
+    }
+
+    const from =
+      logoState === LOGO_STATE.NAV
+        ? targetFor(LOGO_STATE.NAV)
+        : { ...logoCurrent };
+
+    if (logo.parentNode !== document.body) {
+      document.body.appendChild(logo);
+      logo.classList.add('logo-fixed');
+    }
+    applyLogoTarget(from);
+    // Keep the logo above the nav and sections while it is in flight
+    logo.style.zIndex = '1001';
+    logo.style.pointerEvents = 'none';
+
+    const to = targetFor(state);
+    setNavCompact(state !== LOGO_STATE.NAV);
+    // Let the CSS left transition carry the links alongside the timed flight
+    navUl.style.transition = '';
+    navUl.style.left =
+      state === LOGO_STATE.NAV ? '' : navUlCompactLeft() + 'px';
+
+    if (instant) {
+      completeTransition(state);
+      return;
+    }
+
+    logoAnimating = true;
+    animateLogo(from, to, () => completeTransition(state));
+  }
+
+  // Scrub the Logo and nav width directly from scroll progress so the flight
+  // happens together with the page movement instead of after the snap finishes
+  function scrubHeroToNav(progress) {
+    const p = clamp01(progress);
+    const eased = p * p * (3 - 2 * p);
+
+    if (logo.parentNode !== document.body) {
+      document.body.appendChild(logo);
+      logo.classList.add('logo-fixed');
+    }
+    cancelLogoAnimations();
+
+    if (p >= 1) {
+      resetLogoToNav();
+      return;
+    }
+
+    if (p <= 0) {
+      nav.style.transition = '';
+      nav.style.maxWidth = '';
+      setNavCompact(true);
+      applyLogoTarget(heroTargetViewport());
+      navUl.style.transition = 'none';
+      navUl.style.left = navUlCompactLeft() + 'px';
+      logoState = LOGO_STATE.HERO;
+      return;
+    }
+
+    const hero = heroTargetViewport();
     const slot = logoSlotViewport();
-    const target = aboutTargetViewport();
-    logo.style.left = slot.left + 'px';
-    logo.style.top = slot.top + 'px';
-    const anim = logo.animate(
-      [
-        { left: slot.left + 'px', top: slot.top + 'px' },
-        { left: target.left + 'px', top: target.top + 'px' },
-      ],
-      {
-        duration: LOGO_FLY_DURATION,
-        easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
-        fill: 'both',
-      },
-    );
-    anim.onfinish = () => {
-      anim.cancel();
-      logoTrackReady = true;
-      logo.style.left = target.left + 'px';
-      logo.style.top = target.top + 'px';
-    };
-  }
+    applyLogoTarget({
+      left: lerp(hero.left, slot.left, eased),
+      top: lerp(hero.top, slot.top, eased),
+      scale: lerp(hero.scale, 1, eased),
+      opacity: lerp(hero.opacity, 1, eased),
+      zIndex: 1001,
+      pointerEvents: 'none',
+    });
 
-  function flyLogoBack() {
-    if (!logo || !logoFlying) return;
-    cancelLogoAnimations();
-    logoFlying = false;
-    logoTrackReady = false;
-    logo.classList.remove('logo-about-large');
-    const currentLeft = parseFloat(logo.style.left) || 0;
-    const currentTop = parseFloat(logo.style.top) || 0;
-    // Measure the target (expanded) nav slot without a visual flash
-    const prevTransition = nav.style.transition;
     nav.style.transition = 'none';
-    nav.classList.remove('about-active');
-    const expandedNavRect = nav.getBoundingClientRect();
-    nav.classList.add('about-active');
-    nav.getBoundingClientRect(); // re-layout at shrunk size so the expand transition can replay
-    nav.style.transition = prevTransition;
-    const padLeft = parseFloat(getComputedStyle(nav).paddingLeft) || 0;
-    const slot = {
-      left: expandedNavRect.left + padLeft,
-      top:
-        expandedNavRect.top + (expandedNavRect.height - logo.offsetHeight) / 2,
-    };
-    // Expand the bar while the logo flies back
-    nav.classList.remove('about-active');
-    const anim = logo.animate(
-      [
-        { left: currentLeft + 'px', top: currentTop + 'px' },
-        { left: slot.left + 'px', top: slot.top + 'px' },
-      ],
-      {
-        duration: LOGO_FLY_DURATION,
-        easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
-        fill: 'both',
-      },
-    );
-    anim.onfinish = () => {
-      anim.cancel();
-      nav.prepend(logo);
-      logo.classList.remove('logo-fixed');
-      logo.style.left = '';
-      logo.style.top = '';
-    };
+    nav.classList.remove('nav-compact');
+    nav.style.maxWidth =
+      NAV_MAX_COMPACT + (NAV_MAX_WIDE - NAV_MAX_COMPACT) * eased + 'px';
+    navUl.style.transition = 'none';
+    navUl.style.left = lerp(navUlCompactLeft(), navUlWideLeft(), eased) + 'px';
+    logoState = LOGO_STATE.HERO;
   }
 
-  function updateAboutLogo() {
-    if (!aboutSection || !aboutLogoColumn || !aboutContent || !logo) return;
-    // Logo lives statically in the About section on narrow screens
-    if (isNarrowScreen()) return;
-    if (isAboutActive()) {
-      if (!logoFlying) {
-        flyLogoToAbout();
-      } else if (logoTrackReady) {
-        const target = aboutTargetViewport();
-        logo.style.left = target.left + 'px';
-        logo.style.top = target.top + 'px';
+  // Scrub the Logo out of the bar toward the About copy, in step with scroll
+  function scrubNavToAbout(progress) {
+    const p = clamp01(progress);
+    const eased = p * p * (3 - 2 * p);
+
+    if (logo.parentNode !== document.body) {
+      document.body.appendChild(logo);
+      logo.classList.add('logo-fixed');
+    }
+    cancelLogoAnimations();
+
+    if (p <= 0) {
+      resetLogoToNav();
+      return;
+    }
+
+    const slot = logoSlotViewport();
+    const about = aboutTargetViewport();
+    applyLogoTarget({
+      left: lerp(slot.left, about.left, eased),
+      top: lerp(slot.top, about.top, eased),
+      scale: lerp(1, ABOUT_LOGO_SCALE, eased),
+      opacity: 1,
+      zIndex: 1001,
+      pointerEvents: 'none',
+    });
+
+    nav.style.transition = 'none';
+    nav.style.maxWidth =
+      NAV_MAX_WIDE - (NAV_MAX_WIDE - NAV_MAX_COMPACT) * eased + 'px';
+    navUl.style.transition = 'none';
+    navUl.style.left = lerp(navUlWideLeft(), navUlCompactLeft(), eased) + 'px';
+    logoState = LOGO_STATE.ABOUT;
+  }
+
+  function updateLogoForScroll(instant = false) {
+    if (!logo) return;
+    if (isNarrowScreen()) {
+      if (logoState !== LOGO_STATE.NAV) resetLogoToNav();
+      return;
+    }
+    if (logoAnimating) return;
+
+    const scrollY = window.scrollY;
+    const homeEnd = featuresSection ? featuresSection.offsetTop : 0;
+    const aboutTop = aboutSection ? aboutSection.offsetTop : Infinity;
+    const aboutBottom = aboutSection
+      ? aboutTop + aboutSection.offsetHeight
+      : Infinity;
+    const aboutStart = aboutTop - window.innerHeight;
+
+    // Hero -> second page
+    if (
+      homeEnd > 0 &&
+      scrollY <= homeEnd &&
+      (logoState === LOGO_STATE.HERO || logoState === LOGO_STATE.NAV)
+    ) {
+      scrubHeroToNav(scrollY / homeEnd);
+      return;
+    }
+
+    // Final viewport before About: fly out of the bar with the page
+    if (scrollY > homeEnd && scrollY <= aboutTop && aboutStart > homeEnd) {
+      const p = (scrollY - aboutStart) / (aboutTop - aboutStart);
+      if (p > 0 || logoState === LOGO_STATE.ABOUT) {
+        scrubNavToAbout(p);
+        return;
       }
-    } else if (logoFlying) {
-      flyLogoBack();
+    }
+
+    // Inside About: keep the Logo pinned beside the description
+    if (scrollY >= aboutTop && scrollY < aboutBottom) {
+      if (logoState === LOGO_STATE.ABOUT) {
+        applyLogoTarget(targetFor(LOGO_STATE.ABOUT));
+        navUl.style.transition = 'none';
+        navUl.style.left = navUlCompactLeft() + 'px';
+      } else {
+        scrubNavToAbout(1);
+      }
+      return;
+    }
+
+    // Past About (footer) or a direct jump: return to the bar
+    if (logoState === LOGO_STATE.ABOUT || logoState === LOGO_STATE.HERO) {
+      resetLogoToNav();
     }
   }
 
@@ -423,9 +655,9 @@ document.addEventListener('DOMContentLoaded', () => {
       window.requestAnimationFrame(() => {
         updateActiveNav();
         updateNavStyle();
-        updateNavIndicator();
         updateParallax();
-        updateAboutLogo();
+        updateLogoForScroll();
+        updateNavIndicator();
         ticking = false;
       });
       ticking = true;
@@ -435,22 +667,36 @@ document.addEventListener('DOMContentLoaded', () => {
   // Initial calls
   updateActiveNav();
   updateNavStyle();
+  updateLogoForScroll(true);
   updateNavIndicator();
-  updateAboutLogo();
+
+  // Translated link labels change the links' width, so re-measure them
+  document.addEventListener('langchange', () => {
+    updateLogoForScroll(true);
+    updateNavIndicator();
+  });
 
   window.addEventListener('resize', () => {
-    updateNavIndicator();
-    if (logoFlying) {
-      cancelLogoAnimations();
-      logoTrackReady = true;
-      const target = aboutTargetViewport();
-      logo.style.left = target.left + 'px';
-      logo.style.top = target.top + 'px';
+    if (!logo) return;
+    if (isNarrowScreen()) {
+      if (logoState !== LOGO_STATE.NAV) resetLogoToNav();
+      updateNavIndicator();
+      return;
     }
+    if (logoState === LOGO_STATE.ABOUT) {
+      if (!logoAnimating) scrubNavToAbout(1);
+    } else {
+      updateLogoForScroll(true);
+      if (logoState === LOGO_STATE.NAV) {
+        navUl.style.left = '';
+        navUl.style.transition = '';
+      }
+    }
+    updateNavIndicator();
   });
 
   // ===== Changelog: Fetch from GitHub =====
-  const GITHUB_REPO = 'Melendez1209/Known';
+  const GITHUB_REPO = 'Melendez1209/Caelum';
   const GITHUB_API = `https://api.github.com/repos/${GITHUB_REPO}`;
   const MAX_ITEMS = 6;
 

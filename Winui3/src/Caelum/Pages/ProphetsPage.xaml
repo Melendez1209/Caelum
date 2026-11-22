@@ -1,0 +1,215 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<Page
+    x:Class="Caelum.Pages.ProphetsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:converters="using:Caelum.Converters"
+    xmlns:controls="using:Caelum.Controls"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+
+    <!--
+        Two bubble templates, one per speaker. The selector in the code behind picks between them
+        from the message, so the student's own messages sit on the right in the accent colour and
+        the assistant's on the left on the card surface.
+
+        Each bubble sits in a percentage column: the assistant's answer may use up to 78% of the
+        width and the student's message 58%, so a long turn wraps instead of being clipped while a
+        short one still hugs its text. The assistant bubble carries a progress ring that is only
+        visible while the answer is still arriving, and renders its Markdown source.
+
+        The item style drops the list's own padding and minimum height: a chat row is exactly as
+        tall as its bubble, and the bubble carries its own inset.
+    -->
+    <Page.Resources>
+        <converters:BoolToVisibilityConverter x:Key="BoolToVisibility" />
+
+        <Style
+            x:Key="ChatItemStyle"
+            TargetType="ListViewItem"
+            BasedOn="{StaticResource DefaultListViewItemStyle}">
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="0,4" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="VerticalContentAlignment" Value="Top" />
+        </Style>
+
+        <DataTemplate x:Key="UserMessageTemplate">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="0.42*" />
+                    <ColumnDefinition Width="0.58*" />
+                </Grid.ColumnDefinitions>
+
+                <Border
+                    Grid.Column="1"
+                    HorizontalAlignment="Right"
+                    Padding="12,8"
+                    CornerRadius="12"
+                    Background="{ThemeResource AccentFillColorSecondaryBrush}">
+                    <TextBlock
+                        TextWrapping="Wrap"
+                        Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}">
+                        <TextBlock.Text>
+                            <Binding Path="Text" />
+                        </TextBlock.Text>
+                    </TextBlock>
+                </Border>
+            </Grid>
+        </DataTemplate>
+
+        <DataTemplate x:Key="AssistantMessageTemplate">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="0.78*" />
+                    <ColumnDefinition Width="0.22*" />
+                </Grid.ColumnDefinitions>
+
+                <Border
+                    Grid.Column="0"
+                    HorizontalAlignment="Left"
+                    Padding="12,8"
+                    CornerRadius="12"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1">
+                    <!--
+                        A grid rather than a horizontal StackPanel: a StackPanel measures its children
+                        with an infinite width, which stops the Markdown block from ever wrapping.
+                    -->
+                    <Grid ColumnSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <ProgressRing
+                            Grid.Column="0"
+                            Width="16"
+                            Height="16"
+                            VerticalAlignment="Center">
+                            <ProgressRing.Visibility>
+                                <Binding Path="IsPending" Converter="{StaticResource BoolToVisibility}" />
+                            </ProgressRing.Visibility>
+                            <ProgressRing.IsActive>
+                                <Binding Path="IsPending" />
+                            </ProgressRing.IsActive>
+                        </ProgressRing>
+
+                        <controls:MarkdownTextBlock
+                            Grid.Column="1"
+                            VerticalAlignment="Center">
+                            <controls:MarkdownTextBlock.Text>
+                                <Binding Path="Text" />
+                            </controls:MarkdownTextBlock.Text>
+                        </controls:MarkdownTextBlock>
+                    </Grid>
+                </Border>
+            </Grid>
+        </DataTemplate>
+    </Page.Resources>
+
+    <Grid Padding="24,16" RowSpacing="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TextBlock
+            Grid.Row="0"
+            x:Name="TitleText"
+            Style="{StaticResource TitleTextBlockStyle}"
+            TextTrimming="CharacterEllipsis" />
+
+        <!--
+            Shown when no model provider has been configured, so the student is told what to do
+            instead of being left with a send button that cannot work.
+        -->
+        <Border
+            Grid.Row="1"
+            x:Name="SetupBanner"
+            Padding="12"
+            CornerRadius="8"
+            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+            BorderThickness="1"
+            Visibility="Collapsed">
+            <StackPanel Spacing="8">
+                <TextBlock
+                    x:Name="SetupBannerText"
+                    TextWrapping="Wrap" />
+
+                <Button
+                    x:Name="OpenSettingsButton"
+                    HorizontalAlignment="Left"
+                    Click="OnOpenSettings" />
+            </StackPanel>
+        </Border>
+
+        <ListView
+            Grid.Row="2"
+            x:Name="MessagesList"
+            Background="Transparent"
+            SelectionMode="None"
+            IsItemClickEnabled="False"
+            ItemContainerStyle="{StaticResource ChatItemStyle}" />
+
+        <Grid Grid.Row="3" ColumnSpacing="8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <Button
+                Grid.Column="0"
+                x:Name="UploadButton"
+                Padding="12,8"
+                MinWidth="0">
+                <FontIcon
+                    FontFamily="Segoe Fluent Icons"
+                    FontSize="16"
+                    Glyph="&#xE728;" />
+            </Button>
+
+            <!--
+                A multi line text box. The preview key handler makes Enter send and Shift+Enter drop
+                a new line; a RichEditBox handles the Enter key below the XAML layer, so it cannot be
+                intercepted reliably. See OnPromptPreviewKeyDown.
+            -->
+            <TextBox
+                Grid.Column="1"
+                x:Name="PromptBox"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Center"
+                AcceptsReturn="True"
+                TextWrapping="Wrap"
+                MaxHeight="150"
+                TextChanged="OnPromptTextChanged" />
+
+            <Button
+                Grid.Column="2"
+                x:Name="SendButton"
+                Padding="12,8"
+                MinWidth="0"
+                IsEnabled="False"
+                Click="OnSend">
+                <!--
+                    The glyph flips between Send and Stop while a reply is streaming, so the same
+                    button cancels the request.
+                -->
+                <FontIcon
+                    x:Name="SendButtonIcon"
+                    FontFamily="Segoe Fluent Icons"
+                    FontSize="16"
+                    Glyph="&#xE724;" />
+            </Button>
+        </Grid>
+    </Grid>
+</Page>
