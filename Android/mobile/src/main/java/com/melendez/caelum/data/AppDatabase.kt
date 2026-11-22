@@ -6,15 +6,18 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.melendez.caelum.data.dao.ChatDao
 import com.melendez.caelum.data.dao.ExamDao
 import com.melendez.caelum.data.dao.SettingsDao
+import com.melendez.caelum.data.entity.ChatMessage
+import com.melendez.caelum.data.entity.ChatSession
 import com.melendez.caelum.data.entity.Exam
 import com.melendez.caelum.data.entity.ExamScore
 import com.melendez.caelum.data.entity.Settings
 import java.io.File
 
 @Database(
-    entities = [Settings::class, Exam::class, ExamScore::class],
+    entities = [Settings::class, Exam::class, ExamScore::class, ChatSession::class, ChatMessage::class],
     version = 1,
     exportSchema = false
 )
@@ -22,6 +25,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun settingsDao(): SettingsDao
 
     abstract fun examDao(): ExamDao
+
+    abstract fun chatDao(): ChatDao
 
     companion object {
         private const val TAG = "AppDatabase"

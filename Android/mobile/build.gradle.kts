@@ -24,7 +24,6 @@ android {
 
     buildTypes {
         release {
-            buildConfigField("String", "apiKey", """"AIzaSyCI8YN38esP9is0vEAw3NkmwySSBYb1GqM"""")
             isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -33,7 +32,6 @@ android {
             isShrinkResources = true
         }
         debug {
-            buildConfigField("String", "apiKey", """"AIzaSyCI8YN38esP9is0vEAw3NkmwySSBYb1GqM"""")
             isMinifyEnabled = false
             isShrinkResources = false
         }
@@ -63,7 +61,10 @@ dependencies {
     implementation(libs.core.ktx)
     implementation(libs.coil.compose)
     implementation(libs.volley)
-    implementation(libs.generativeai)
+    implementation(libs.okhttp)
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.security.crypto)
+    implementation(libs.markdown.renderer.m3)
     implementation(libs.material.icons.extended)
     implementation(libs.material)
 

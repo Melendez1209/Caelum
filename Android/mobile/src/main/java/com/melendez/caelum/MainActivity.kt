@@ -9,18 +9,20 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
 import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigationevent.compose.LocalNavigationEventDispatcherOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.scene.DialogSceneStrategy
@@ -35,8 +37,14 @@ import com.melendez.caelum.ui.components.LocalDynamicColorSwitch
 import com.melendez.caelum.ui.components.LocalPaletteStyleIndex
 import com.melendez.caelum.ui.components.LocalScreenType
 import com.melendez.caelum.ui.components.LocalSeedColor
+import com.melendez.caelum.ui.navigation.BackDirection
 import com.melendez.caelum.ui.navigation.Navigator
+import com.melendez.caelum.ui.navigation.fadeThrough
+import com.melendez.caelum.ui.navigation.rememberScreenWidthBackOwner
 import com.melendez.caelum.ui.navigation.rememberNavigationState
+import com.melendez.caelum.ui.navigation.rememberOuterForwardTransition
+import com.melendez.caelum.ui.navigation.rememberOuterPopTransition
+import com.melendez.caelum.ui.navigation.rememberOuterPredictivePopTransition
 import com.melendez.caelum.ui.navigation.toEntries
 import com.melendez.caelum.ui.screens.Detail
 import com.melendez.caelum.ui.screens.Guide
@@ -49,15 +57,16 @@ import com.melendez.caelum.ui.screens.add.DRP
 import com.melendez.caelum.ui.screens.add.Inputting
 import com.melendez.caelum.ui.screens.main.MainScreen
 import com.melendez.caelum.ui.screens.settings.General
+import com.melendez.caelum.ui.screens.settings.LlmSettings
 import com.melendez.caelum.ui.screens.settings.Settings
 import com.melendez.caelum.ui.screens.settings.appearance.Appearance
 import com.melendez.caelum.ui.screens.settings.appearance.Dark
 import com.melendez.caelum.ui.screens.settings.appearance.Language
 import com.melendez.caelum.ui.theme.DEFAULT_SEED_COLOR
 import com.melendez.caelum.ui.theme.CaelumTheme
+import com.melendez.caelum.util.getUnifiedSizeClass
 import com.melendez.caelum.util.settings.DarkThemePreference
 import com.melendez.caelum.util.settings.PreferenceUtil
-import com.melendez.caelum.util.getUnifiedSizeClass
 
 @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
 class MainActivity : ComponentActivity() {
@@ -127,9 +136,12 @@ class MainActivity : ComponentActivity() {
             } ?: DarkThemePreference()
             val isDarkTheme = darkThemePreference.isDarkTheme(isSystemInDarkTheme)
 
+            val screenWidthBackOwner = rememberScreenWidthBackOwner(onExit = { finish() })
+
             // Setting the CompositionLocalProvider to Provide Theme Parameters
             CompositionLocalProvider(
                 LocalActivity provides this,
+                LocalNavigationEventDispatcherOwner provides screenWidthBackOwner,
                 LocalDarkTheme provides darkThemePreference,
                 LocalSeedColor provides (settings?.themeColor ?: DEFAULT_SEED_COLOR),
                 LocalDynamicColorSwitch provides (settings?.isDynamicColorEnabled ?: false),
@@ -147,27 +159,47 @@ class MainActivity : ComponentActivity() {
                     Surface(modifier = Modifier.fillMaxSize()) {
 
                         if (settings != null) {
-                            key(settings.isFirstLogin) {
+                            val topLevelRoutes = remember {
+                                setOf(
+                                    Screens.Main,
+                                    Screens.Settings,
+                                    Screens.General,
+                                    Screens.Appearance,
+                                    Screens.Dark,
+                                    Screens.Language,
+                                    Screens.About,
+                                    Screens.Signin,
+                                    Screens.Prophets(),
+                                    Screens.LlmSettings,
+                                    Screens.Credits,
+                                    Screens.Guide
+                                )
+                            }
+                            val topLevelKeys = remember(topLevelRoutes) {
+                                topLevelRoutes.map { it.toString() }.toSet()
+                            }
+                            val backDirection = remember { BackDirection() }
+                            val motionScheme = MaterialTheme.motionScheme
+                            val forwardTransition =
+                                rememberOuterForwardTransition(topLevelKeys, backDirection)
+                            val popTransition = rememberOuterPopTransition(
+                                topLevelKeys = topLevelKeys,
+                                direction = backDirection,
+                                predictiveBackEnabled = settings.predictiveBackEnabled
+                            )
+                            val predictivePopTransition = rememberOuterPredictivePopTransition(
+                                topLevelKeys = topLevelKeys,
+                                direction = backDirection,
+                                predictiveBackEnabled = settings.predictiveBackEnabled
+                            )
+                            AnimatedContent(
+                                targetState = settings.isFirstLogin,
+                                transitionSpec = { fadeThrough(motionScheme) },
+                                label = "OnboardingTransition"
+                            ) { isFirstLogin ->
                                 val navigationState = rememberNavigationState(
-                                    startRoute =
-                                        if (settings.isFirstLogin) {
-                                            Screens.Guide
-                                        } else {
-                                            Screens.Main
-                                        },
-                                    topLevelRoutes = setOf(
-                                        Screens.Main,
-                                        Screens.Settings,
-                                        Screens.General,
-                                        Screens.Appearance,
-                                        Screens.Dark,
-                                        Screens.Language,
-                                        Screens.About,
-                                        Screens.Signin,
-                                        Screens.Prophets,
-                                        Screens.Credits,
-                                        Screens.Guide
-                                    )
+                                    startRoute = if (isFirstLogin) Screens.Guide else Screens.Main,
+                                    topLevelRoutes = topLevelRoutes
                                 )
                                 val navigator = remember { Navigator(navigationState) }
                                 val entryProvider = entryProvider {
@@ -217,8 +249,11 @@ class MainActivity : ComponentActivity() {
                                     entry<Screens.Detail> { key ->
                                         Detail(navigator = navigator, examId = key.examId)
                                     }
-                                    entry<Screens.Prophets> {
-                                        Prophets(navigator = navigator)
+                                    entry<Screens.Prophets> { key ->
+                                        Prophets(navigator = navigator, examId = key.examId)
+                                    }
+                                    entry<Screens.LlmSettings> {
+                                        LlmSettings(navigator = navigator)
                                     }
                                     entry<Screens.Credits> {
                                         Credits(navigator = navigator)
@@ -227,6 +262,9 @@ class MainActivity : ComponentActivity() {
                                 NavDisplay(
                                     entries = navigationState.toEntries(entryProvider),
                                     onBack = { navigator.goBack() },
+                                    transitionSpec = forwardTransition,
+                                    popTransitionSpec = popTransition,
+                                    predictivePopTransitionSpec = predictivePopTransition,
                                     sceneStrategies = remember { listOf(DialogSceneStrategy()) }
                                 )
                             }

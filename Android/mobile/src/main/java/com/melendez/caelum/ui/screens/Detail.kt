@@ -16,13 +16,13 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.automirrored.rounded.Message
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.Print
 import androidx.compose.material.icons.rounded.Share
+import androidx.compose.material.icons.rounded.SmartToy
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomAppBarDefaults
 import androidx.compose.material3.Button
@@ -64,7 +64,7 @@ import com.melendez.caelum.data.entity.SubjectStat
 import com.melendez.caelum.ui.components.ShareOptionsSheet
 import com.melendez.caelum.ui.components.Tip
 import com.melendez.caelum.ui.components.chart.ComboChart
-import com.melendez.caelum.ui.components.chart.ScorePieChart
+import com.melendez.caelum.ui.components.chart.ScoreRadarChart
 import com.melendez.caelum.ui.navigation.Navigator
 import com.melendez.caelum.ui.viewmodel.ExamViewModel
 import com.melendez.caelum.util.averageDelta
@@ -276,10 +276,10 @@ fun Detail(navigator: Navigator, examId: Long = 0L) {
             ) {
                 FilledIconButton(
                     modifier = Modifier.width(64.dp),
-                    onClick = { navigator.navigate(Screens.Prophets) }
+                    onClick = { navigator.navigate(Screens.Prophets(examId = examId)) }
                 ) {
                     Icon(
-                        Icons.AutoMirrored.Rounded.Message,
+                        Icons.Rounded.SmartToy,
                         stringResource(R.string.prophets)
                     )
                 }
@@ -330,8 +330,8 @@ fun Detail(navigator: Navigator, examId: Long = 0L) {
                                             .map { percentage(it.totalMark, it.totalFullMark) }
                                     )
                                 }
-                                item(key = "pie_chart") {
-                                    ScorePieChart(scores = scores)
+                                item(key = "radar_chart") {
+                                    ScoreRadarChart(scores = scores)
                                 }
                                 items(scoredKeys, key = { it }) { subjectKey ->
                                     SubjectRow(

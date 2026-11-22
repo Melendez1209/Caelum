@@ -2,11 +2,14 @@ package com.melendez.caelum.data.repository
 
 import com.melendez.caelum.data.dao.SettingsDao
 import com.melendez.caelum.data.entity.Settings
+import com.melendez.caelum.util.llm.LlmConfigSource
 import kotlinx.coroutines.flow.Flow
 
-class SettingsRepository(private val settingsDao: SettingsDao) {
+class SettingsRepository(private val settingsDao: SettingsDao) : LlmConfigSource {
 
     val settings: Flow<Settings?> = settingsDao.getSettings()
+
+    override suspend fun currentSettings(): Settings? = settingsDao.getSettingsSync()
 
     suspend fun initializeSettings() {
         // Check if settings exist, if not create default settings
@@ -64,5 +67,25 @@ class SettingsRepository(private val settingsDao: SettingsDao) {
 
     suspend fun updateHistoryViewMode(mode: Int) {
         settingsDao.updateHistoryViewMode(mode)
+    }
+
+    suspend fun updateLlmProvider(value: Int) {
+        settingsDao.updateLlmProvider(value)
+    }
+
+    suspend fun updateLlmBaseUrl(url: String) {
+        settingsDao.updateLlmBaseUrl(url)
+    }
+
+    suspend fun updateLlmModel(model: String) {
+        settingsDao.updateLlmModel(model)
+    }
+
+    suspend fun updateCurrentChatSession(sessionId: Long) {
+        settingsDao.updateCurrentChatSession(sessionId)
+    }
+
+    suspend fun updateGrade(grade: Int) {
+        settingsDao.updateGrade(grade)
     }
 }

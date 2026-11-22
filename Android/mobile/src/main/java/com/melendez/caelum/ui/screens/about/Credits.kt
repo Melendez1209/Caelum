@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.TopAppBarDefaults
@@ -21,9 +20,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.melendez.caelum.svg.drawablevectors.coder
 import com.melendez.caelum.R
 import com.melendez.caelum.svg.DynamicColorImageVectors
+import com.melendez.caelum.svg.drawablevectors.coder
 import com.melendez.caelum.ui.components.CreditItem
 import com.melendez.caelum.ui.components.LocalScreenType
 import com.melendez.caelum.ui.components.SharedTopBar
@@ -38,7 +37,6 @@ data class Dependency(
 
 const val Apache = "Apache License 2.0"
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Credits(navigator: Navigator) {
 
@@ -67,11 +65,6 @@ private fun Credits_Content(modifier: Modifier = Modifier) {
         Dependency("AndroidX Core", Apache, "https://github.com/androidx/androidx"),
         Dependency("Coil Compose", Apache, "https://github.com/coil-kt/coil"),
         Dependency("Volley", Apache, "https://github.com/google/volley"),
-        Dependency(
-            "Google Generative AI",
-            Apache,
-            "https://github.com/google/generative-ai-android"
-        ),
         Dependency(
             "Material Icons Extended",
             Apache,

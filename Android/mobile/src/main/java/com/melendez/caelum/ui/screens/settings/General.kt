@@ -3,7 +3,6 @@ package com.melendez.caelum.ui.screens.settings
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
@@ -16,11 +15,12 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.melendez.caelum.R
-import com.melendez.caelum.ui.components.generalsets.IdentitySelector
 import com.melendez.caelum.ui.components.LocalScreenType
 import com.melendez.caelum.ui.components.PreferenceSubtitle
-import com.melendez.caelum.ui.components.generalsets.RegionField
 import com.melendez.caelum.ui.components.SharedTopBar
+import com.melendez.caelum.ui.components.generalsets.GradeSelector
+import com.melendez.caelum.ui.components.generalsets.IdentitySelector
+import com.melendez.caelum.ui.components.generalsets.RegionField
 import com.melendez.caelum.ui.components.generalsets.SubjectSelector
 import com.melendez.caelum.ui.navigation.Navigator
 import com.melendez.caelum.ui.screens.Screens
@@ -28,7 +28,6 @@ import com.melendez.caelum.util.settings.Identity
 import com.melendez.caelum.util.settings.PreferenceUtil
 import com.melendez.caelum.util.settings.toSubjectKeySet
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun General(navigator: Navigator) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
@@ -52,6 +51,7 @@ fun General_Content(modifier: Modifier) {
     val settings = preferenceUtil.settings.collectAsStateWithLifecycle(initialValue = null).value
 
     val identity = settings?.identity ?: Identity.NONE
+    val grade = settings?.grade ?: 0
     val region = settings?.region ?: ""
     val selectedSubjects = (settings?.selectedSubjects ?: "").toSubjectKeySet()
 
@@ -61,6 +61,15 @@ fun General_Content(modifier: Modifier) {
             IdentitySelector(
                 selected = identity,
                 onSelect = { preferenceUtil.updateIdentity(it) }
+            )
+        }
+
+        item { PreferenceSubtitle(text = stringResource(R.string.grade)) }
+        item {
+            GradeSelector(
+                selected = grade,
+                onSelect = { preferenceUtil.updateGrade(it) },
+                modifier = Modifier.padding(horizontal = 16.dp)
             )
         }
 

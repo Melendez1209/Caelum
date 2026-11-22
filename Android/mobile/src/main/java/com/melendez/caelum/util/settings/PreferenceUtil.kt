@@ -159,6 +159,12 @@ class PreferenceUtil(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun updateGrade(grade: Int) {
+        viewModelScope.launch {
+            repository.updateGrade(grade)
+        }
+    }
+
     fun updateHistoryViewMode(mode: HistoryViewMode) {
         viewModelScope.launch {
             repository.updateHistoryViewMode(mode.value)
