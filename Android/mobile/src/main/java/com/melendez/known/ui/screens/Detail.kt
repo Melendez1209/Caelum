@@ -64,7 +64,7 @@ import com.melendez.known.data.entity.SubjectStat
 import com.melendez.known.ui.components.ShareOptionsSheet
 import com.melendez.known.ui.components.Tip
 import com.melendez.known.ui.components.chart.ComboChart
-import com.melendez.known.ui.components.chart.ScorePieChart
+import com.melendez.known.ui.components.chart.ScoreRadarChart
 import com.melendez.known.ui.navigation.Navigator
 import com.melendez.known.ui.viewmodel.ExamViewModel
 import com.melendez.known.util.averageDelta
@@ -330,8 +330,8 @@ fun Detail(navigator: Navigator, examId: Long = 0L) {
                                             .map { percentage(it.totalMark, it.totalFullMark) }
                                     )
                                 }
-                                item(key = "pie_chart") {
-                                    ScorePieChart(scores = scores)
+                                item(key = "radar_chart") {
+                                    ScoreRadarChart(scores = scores)
                                 }
                                 items(scoredKeys, key = { it }) { subjectKey ->
                                     SubjectRow(
